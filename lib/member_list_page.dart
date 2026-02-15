@@ -123,6 +123,7 @@ class MemberDetailPage extends StatefulWidget {
 
 class _MemberDetailPageState extends State<MemberDetailPage> {
   bool _isViewerAdmin = false;
+  final List<String> _radarAxisTitles = ['動作', 'セール\nトリム', 'ヒール\nトリム', 'VMG', 'スタート', 'コース'];
 
   @override
   void initState() {
@@ -208,37 +209,58 @@ class _MemberDetailPageState extends State<MemberDetailPage> {
     );
   }
 
-  // チャートデータ取得ロジック
+  // チャートデータ取得ロジック (動的対応版)
   Future<Map<String, List<double>>> _fetchChartData() async {
     try {
       final now = DateTime.now();
       final pastMonth = now.subtract(const Duration(days: 60));
       final DateFormat formatter = DateFormat('yyyy-MM-dd');
 
-      // ★追加: ユーザーデータから teamId を取得
-      // これがないとセキュリティルールで弾かれてしまいます
       final String? targetTeamId = widget.userData['teamId'];
       if (targetTeamId == null) return {};
 
+      // 1. 最新のチェックリスト設定を取得 (home_page.dartと同様)
+      Map<String, List<String>> currentRadarMap = {};
+      final checklistDoc = await FirebaseFirestore.instance
+          .collection('teams')
+          .doc(targetTeamId)
+          .collection('settings')
+          .doc('checklist')
+          .get();
+
+      if (checklistDoc.exists && checklistDoc.data() != null) {
+        final data = checklistDoc.data()!;
+        currentRadarMap['動作'] = List<String>.from(data['動作']?['動作'] ?? []);
+        currentRadarMap['セール\nトリム'] = List<String>.from(data['セーリング']?['セールトリム'] ?? []);
+        currentRadarMap['ヒール\nトリム'] = List<String>.from(data['セーリング']?['バランス'] ?? []);
+        currentRadarMap['VMG'] = List<String>.from(data['セーリング']?['VMG'] ?? []);
+        
+        List<String> startItems = [];
+        final startMap = data['スタート'] as Map<String, dynamic>? ?? {};
+        startMap.forEach((_, v) => startItems.addAll(List<String>.from(v)));
+        currentRadarMap['スタート'] = startItems;
+
+        List<String> courseItems = [];
+        final courseMap = data['コース'] as Map<String, dynamic>? ?? {};
+        courseMap.forEach((_, v) => courseItems.addAll(List<String>.from(v)));
+        currentRadarMap['コース'] = courseItems;
+      } else {
+        // データがない場合は空を返す
+        return {};
+      }
+
+      // 2. 練習記録を取得
       final snapshot = await FirebaseFirestore.instance
           .collection('practice_reports')
           .where('userId', isEqualTo: widget.userId)
-          .where('teamId', isEqualTo: targetTeamId) // ★重要: teamIdによる絞り込みを追加
+          .where('teamId', isEqualTo: targetTeamId)
           .where('date', isGreaterThanOrEqualTo: formatter.format(pastMonth))
           .get();
 
-      final Map<String, List<String>> radarCategories = {
-        '動作': ['適切なヒール量、ロール量', 'ヘルム使えてるか', 'メイン、ジブ引いてこれてるか', '煽りの加速感', '船を揺らさない', 'タック後のリーチ', '動作前後のスピードがあるか', '逆ジブ量', 'かかってる時間', '船のアングル'],
-        'セール\nトリム': ['シーティングスタイルの確立', 'ジブは両ピロ、メインはリーチ崩さない', '風の強弱に合わせられる', 'コントロールロープ適切に扱える', '波に合わせられる'],
-        'ヒール\nトリム': ['ヒール（ヘルム）が一定', '波の海面での微ヒール、フラット', 'しっかりハイクアウトできているか', 'ランニングの一定パワーとヒール'],
-        'VMG': ['スピードファースト', '角度とれる'],
-        'スタート': ['下のルーム1.5艇幅確保', '微速前進ができる', '動作の確認（煽り）', 'ライン感覚（見通し）', 'デンジャーの見極め（潮・振れ）', '自艇の上下艇よりバウ出す', 'フルスピード', 'フレッシュウィンドで2分間走れる'],
-        'コース': ['ルーティン実施（海面調査）', 'ロングを走る', 'ゲインを確定できる', 'オーバーセールしない', '振れ、ブローの見極め', '艇団に対してのポジショニング'],
-      };
-
+      // 3. 集計
       Map<String, Map<String, List<int>>> aggregated = {'light': {}, 'medium': {}, 'heavy': {}};
       for (var wind in ['light', 'medium', 'heavy']) {
-        for (var cat in radarCategories.keys) {
+        for (var cat in _radarAxisTitles) {
           aggregated[wind]![cat] = [0, 0];
         }
       }
@@ -256,7 +278,7 @@ class _MemberDetailPageState extends State<MemberDetailPage> {
         if (avgWind >= 7.0) windKey = 'heavy';
         else if (avgWind >= 4.0) windKey = 'medium';
 
-        radarCategories.forEach((categoryName, items) {
+        currentRadarMap.forEach((categoryName, items) {
           for (var item in items) {
             if (scores.containsKey(item) && scores[item] is int && scores[item] > 0) {
               aggregated[windKey]![categoryName]![0] += scores[item] as int;
@@ -269,7 +291,7 @@ class _MemberDetailPageState extends State<MemberDetailPage> {
       Map<String, List<double>> result = {};
       for (var wind in ['light', 'medium', 'heavy']) {
         List<double> averages = [];
-        for (var cat in radarCategories.keys) {
+        for (var cat in _radarAxisTitles) {
           final sum = aggregated[wind]![cat]![0];
           final count = aggregated[wind]![cat]![1];
           averages.add(count > 0 ? sum / count : 0.0);
@@ -291,7 +313,6 @@ class _MemberDetailPageState extends State<MemberDetailPage> {
     final grade = widget.userData['grade'] ?? '-';
     final position = widget.userData['position'] ?? '-';
     final yachtClass = widget.userData['class'] ?? '-';
-    final labels = ['動作', 'セール\nトリム', 'ヒール\nトリム', 'VMG', 'スタート', 'コース'];
 
     final currentUser = FirebaseAuth.instance.currentUser;
 
@@ -377,6 +398,15 @@ class _MemberDetailPageState extends State<MemberDetailPage> {
                     RadarChartData(
                       radarTouchData: RadarTouchData(enabled: false),
                       dataSets: [
+                        // ★重要: スケールを固定するための透明なデータセット（最大値3.0）
+                        RadarDataSet(
+                          dataEntries: List.generate(6, (_) => const RadarEntry(value: 3.0)),
+                          borderColor: Colors.transparent,
+                          fillColor: Colors.transparent,
+                          entryRadius: 0,
+                          borderWidth: 0,
+                        ),
+                        // 実際のデータ
                         _buildRadarDataSet(data['light']!, Colors.green),
                         _buildRadarDataSet(data['medium']!, Colors.blue),
                         _buildRadarDataSet(data['heavy']!, Colors.red),
@@ -387,7 +417,7 @@ class _MemberDetailPageState extends State<MemberDetailPage> {
                       titlePositionPercentageOffset: 0.1,
                       titleTextStyle: const TextStyle(color: Colors.black87, fontSize: 12, fontWeight: FontWeight.bold),
                       getTitle: (index, angle) {
-                        if (index < labels.length) return RadarChartTitle(text: labels[index]);
+                        if (index < _radarAxisTitles.length) return RadarChartTitle(text: _radarAxisTitles[index]);
                         return const RadarChartTitle(text: '');
                       },
                       tickCount: 3,
