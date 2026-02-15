@@ -180,12 +180,13 @@ class _HomePageState extends State<HomePage> {
     });
 
     try {
+      // ★修正: 最新の3件だけ取得（1日分ならAM/PMで2件、予備で3件あれば十分）
       final snapshot = await FirebaseFirestore.instance
           .collection('practice_reports')
           .where('userId', isEqualTo: user.uid)
           .where('teamId', isEqualTo: _myTeamId)
           .orderBy('date', descending: true)
-          .limit(10)
+          .limit(3) 
           .get();
 
       if (snapshot.docs.isEmpty) {
@@ -198,14 +199,20 @@ class _HomePageState extends State<HomePage> {
 
       setState(() => _loadingMessage = 'AIコーチが分析レポートを作成中...');
       
+      // ★追加: 最新の日付を取得し、その日付のデータだけを抽出する
+      final String latestDate = snapshot.docs.first.data()['date'];
+
       StringBuffer promptBuffer = StringBuffer();
       promptBuffer.writeln("あなたはプロのヨット競技コーチです。");
-      promptBuffer.writeln("以下の選手（ユーザー）の直近の練習データを元に、『課題』と『具体的な練習メニュー』をアドバイスしてください。");
+      promptBuffer.writeln("以下の選手（ユーザー）の直近（$latestDate）の練習データを元に、『課題』と『具体的な練習メニュー』をアドバイスしてください。");
       promptBuffer.writeln("---");
       
       for (var doc in snapshot.docs) {
         final r = doc.data();
-        promptBuffer.writeln("日付: ${r['date']}");
+        // ★追加: 違う日付のデータが出てきたらループを終了（直近1日分のみにする）
+        if (r['date'] != latestDate) break;
+
+        promptBuffer.writeln("日付: ${r['date']} (${r['timeSlot'] ?? ''})");
         if(r.containsKey('windSpeedMin')) promptBuffer.writeln("- 風速: ${r['windSpeedMin']}m - ${r['windSpeedMax']}m");
         if(r.containsKey('comment_動作')) promptBuffer.writeln("- 動作メモ: ${r['comment_動作']}");
         if(r.containsKey('comment_コース')) promptBuffer.writeln("- コースメモ: ${r['comment_コース']}");
@@ -244,7 +251,6 @@ class _HomePageState extends State<HomePage> {
 
     try {
       // 1. 最新のチェックリスト設定を取得
-      // これにより、ユーザーが追加した項目もグラフ計算に含まれるようになります
       Map<String, List<String>> currentRadarMap = {};
       
       final checklistDoc = await FirebaseFirestore.instance
@@ -257,33 +263,22 @@ class _HomePageState extends State<HomePage> {
       if (checklistDoc.exists && checklistDoc.data() != null) {
         final data = checklistDoc.data()!;
         
-        // データベースの構造を、レーダーチャートの6軸にマッピング
-        // '動作' 軸
         currentRadarMap['動作'] = List<String>.from(data['動作']?['動作'] ?? []);
-        
-        // 'セール\nトリム' 軸
         currentRadarMap['セール\nトリム'] = List<String>.from(data['セーリング']?['セールトリム'] ?? []);
-        
-        // 'ヒール\nトリム' 軸 (旧: バランス)
         currentRadarMap['ヒール\nトリム'] = List<String>.from(data['セーリング']?['バランス'] ?? []);
-        
-        // 'VMG' 軸
         currentRadarMap['VMG'] = List<String>.from(data['セーリング']?['VMG'] ?? []);
         
-        // 'スタート' 軸 (サブカテゴリ全て合算)
         List<String> startItems = [];
         final startMap = data['スタート'] as Map<String, dynamic>? ?? {};
         startMap.forEach((_, v) => startItems.addAll(List<String>.from(v)));
         currentRadarMap['スタート'] = startItems;
 
-        // 'コース' 軸 (サブカテゴリ全て合算)
         List<String> courseItems = [];
         final courseMap = data['コース'] as Map<String, dynamic>? ?? {};
         courseMap.forEach((_, v) => courseItems.addAll(List<String>.from(v)));
         currentRadarMap['コース'] = courseItems;
 
       } else {
-        // データがない場合は空を返す（またはデフォルト値）
         return {};
       }
 
@@ -328,7 +323,6 @@ class _HomePageState extends State<HomePage> {
           windKey = 'medium';
         }
 
-        // 動的に取得した項目リストを使って集計
         currentRadarMap.forEach((axisName, items) {
           for (var item in items) {
             if (scores.containsKey(item) && scores[item] is int && scores[item] > 0) {
@@ -446,8 +440,7 @@ class _HomePageState extends State<HomePage> {
                   RadarChartData(
                     radarTouchData: RadarTouchData(enabled: false),
                     dataSets: [
-                      // ★ここが重要: スケールを固定するための透明なデータセット（最大値3.0）
-                      // これを入れることで、1.0でもグラフの1/3の位置に表示されるようになります
+                      // ★透明なデータセット（最大値3.0固定用）
                       RadarDataSet(
                         dataEntries: _radarAxisTitles.map((_) => const RadarEntry(value: 3.0)).toList(),
                         borderColor: Colors.transparent,
@@ -471,7 +464,7 @@ class _HomePageState extends State<HomePage> {
                       }
                       return const RadarChartTitle(text: '');
                     },
-                    tickCount: 3, // 3段階（1, 2, 3）のグリッド線を表示
+                    tickCount: 3, 
                     ticksTextStyle: const TextStyle(color: Colors.transparent),
                     tickBorderData: const BorderSide(color: Colors.grey, width: 0.5),
                     gridBorderData: const BorderSide(color: Colors.grey, width: 0.5),
@@ -488,7 +481,6 @@ class _HomePageState extends State<HomePage> {
 
   RadarDataSet _buildRadarDataSet(List<double> values, Color color) {
     if (values.every((v) => v == 0)) {
-       // 全て0の場合は透明なデータを返す
        return RadarDataSet(dataEntries: _radarAxisTitles.map((_) => const RadarEntry(value: 0)).toList(), borderColor: Colors.transparent, fillColor: Colors.transparent);
     }
 
