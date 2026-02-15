@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:intl/intl.dart'; // ★追加: 日付フォーマット用
+import 'package:intl/intl.dart'; 
 
 class EquipmentPage extends StatefulWidget {
   const EquipmentPage({super.key});
@@ -123,6 +123,8 @@ class _EquipmentPageState extends State<EquipmentPage> {
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: color.withOpacity(0.3))),
       child: ExpansionTile(
+        // ★修正: Keyを追加して状態を独立させる
+        key: PageStorageKey(title), 
         title: Text(title, style: TextStyle(fontWeight: FontWeight.bold, color: color, fontSize: 16)),
         leading: Icon(Icons.sailing, color: color),
         childrenPadding: const EdgeInsets.only(bottom: 10),
