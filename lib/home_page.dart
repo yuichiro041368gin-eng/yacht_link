@@ -446,6 +446,16 @@ class _HomePageState extends State<HomePage> {
                   RadarChartData(
                     radarTouchData: RadarTouchData(enabled: false),
                     dataSets: [
+                      // ★ここが重要: スケールを固定するための透明なデータセット（最大値3.0）
+                      // これを入れることで、1.0でもグラフの1/3の位置に表示されるようになります
+                      RadarDataSet(
+                        dataEntries: _radarAxisTitles.map((_) => const RadarEntry(value: 3.0)).toList(),
+                        borderColor: Colors.transparent,
+                        fillColor: Colors.transparent,
+                        entryRadius: 0,
+                        borderWidth: 0,
+                      ),
+                      // 実際のデータ
                       _buildRadarDataSet(data['light']!, Colors.green),
                       _buildRadarDataSet(data['medium']!, Colors.blue),
                       _buildRadarDataSet(data['heavy']!, Colors.red),
@@ -461,7 +471,7 @@ class _HomePageState extends State<HomePage> {
                       }
                       return const RadarChartTitle(text: '');
                     },
-                    tickCount: 3,
+                    tickCount: 3, // 3段階（1, 2, 3）のグリッド線を表示
                     ticksTextStyle: const TextStyle(color: Colors.transparent),
                     tickBorderData: const BorderSide(color: Colors.grey, width: 0.5),
                     gridBorderData: const BorderSide(color: Colors.grey, width: 0.5),
@@ -478,6 +488,7 @@ class _HomePageState extends State<HomePage> {
 
   RadarDataSet _buildRadarDataSet(List<double> values, Color color) {
     if (values.every((v) => v == 0)) {
+       // 全て0の場合は透明なデータを返す
        return RadarDataSet(dataEntries: _radarAxisTitles.map((_) => const RadarEntry(value: 0)).toList(), borderColor: Colors.transparent, fillColor: Colors.transparent);
     }
 
