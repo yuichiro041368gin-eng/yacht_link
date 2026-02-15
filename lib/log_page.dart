@@ -17,8 +17,9 @@ class _LogPageState extends State<LogPage> {
   
   String _timeSlot = 'AM'; // 'AM' or 'PM'
   
-  // ★追加: 自分のチームIDを保持する変数
+  // チームIDと権限
   String? _myTeamId;
+  bool _isAdmin = false;
 
   String get _documentId {
     final uid = FirebaseAuth.instance.currentUser?.uid ?? "guest";
@@ -34,94 +35,98 @@ class _LogPageState extends State<LogPage> {
 
   late final List<String> _windSpeeds;
 
+  // チェックリストデータ
+  Map<String, dynamic> _checklistData = {}; 
+
+  // デフォルトのチェックリスト
+  final Map<String, dynamic> _defaultChecklistData = {
+    '動作': {
+      '動作': ['適切なヒール量、ロール量', 'ヘルム使えてるか', 'メイン、ジブ引いてこれてるか', '煽りの加速感', '船を揺らさない', 'タック後のリーチ', '動作前後のスピードがあるか', '逆ジブ量', 'かかってる時間', '船のアングル'],
+    },
+    'セーリング': {
+      'セールトリム': ['シーティングスタイルの確立', 'ジブは両ピロ、メインはリーチ崩さない', '風の強弱に合わせられる', 'コントロールロープ適切に扱える', '波に合わせられる'],
+      'バランス': ['ヒール（ヘルム）が一定', '波の海面での微ヒール、平水面でのフラット', 'しっかりハイクアウトできているか', 'ランニングの一定パワーとヒール'],
+      'VMG': ['スピードファースト', '角度とれる'],
+    },
+    'スタート': {
+      'スタート前': ['下のルーム1.5艇幅確保', '微速前進ができる', '動作の確認（煽り）', 'ライン感覚（見通し）', 'デンジャーの見極め（潮・振れ）'],
+      'スタート後': ['自艇の上下艇よりバウ出す', 'フルスピード', 'フレッシュウィンドで2分間走れる'],
+    },
+    'コース': {
+      'スタート前': ['ルーティン実施（海面調査）'],
+      'スタート後': ['ロングを走る', 'ゲインを確定できる', 'オーバーセールしない', '振れ、ブローの見極め', '艇団に対してのポジショニング'],
+    },
+  };
+
+  // ★追加: 表示順序を固定するための優先順位リスト
+  final List<String> _sortOrder = [
+    '動作',
+    'セールトリム', 'バランス', 'VMG',
+    'スタート前', 'スタート後',
+  ];
+
   @override
   void initState() {
     super.initState();
     _windSpeeds = List.generate(51, (index) {
       return (index * 0.5).toStringAsFixed(1);
     });
-    // ★追加: 起動時にチームIDを取得しておく
-    _fetchMyTeamId();
+    _fetchUserInfo();
   }
 
-  // ★追加: ユーザー情報からチームIDを取得
-  Future<void> _fetchMyTeamId() async {
+  // ユーザー情報とチームID、チェックリスト設定を取得
+  Future<void> _fetchUserInfo() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
     try {
       final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
       if (mounted && doc.exists) {
+        final data = doc.data()!;
         setState(() {
-          _myTeamId = doc.data()?['teamId'];
+          _myTeamId = data['teamId'];
+          _isAdmin = data['role'] == 'admin';
         });
+
+        if (_myTeamId != null) {
+          _loadChecklistConfig();
+        }
       }
     } catch (e) {
-      debugPrint("Error fetching teamId: $e");
+      debugPrint("Error fetching user info: $e");
     }
   }
 
-  final Map<String, Map<String, List<String>>> _checklistData = {
-    '動作': {
-      '動作': [
-        '適切なヒール量、ロール量',
-        'ヘルム使えてるか',
-        'メイン、ジブ引いてこれてるか',
-        '煽りの加速感',
-        '船を揺らさない',
-        'タック後のリーチ',
-        '動作前後のスピードがあるか',
-        '逆ジブ量',
-        'かかってる時間',
-        '船のアングル',
-      ],
-    },
-    'セーリング': {
-      'セールトリム': [
-        'シーティングスタイルの確立',
-        'ジブは両ピロ、メインはリーチ崩さない',
-        '風の強弱に合わせられる',
-        'コントロールロープ適切に扱える',
-        '波に合わせられる',
-      ],
-      'バランス': [
-        'ヒール（ヘルム）が一定',
-        '波の海面での微ヒール、フラット',
-        'しっかりハイクアウトできているか',
-        'ランニングの一定パワーとヒール',
-      ],
-      'VMG': [
-        'スピードファースト',
-        '角度とれる',
-      ],
-    },
-    'スタート': {
-      'スタート前': [
-        '下のルーム1.5艇幅確保',
-        '微速前進ができる',
-        '動作の確認（煽り）',
-        'ライン感覚（見通し）',
-        'デンジャーの見極め（潮・振れ）',
-      ],
-      'スタート後': [
-        '自艇の上下艇よりバウ出す',
-        'フルスピード',
-        'フレッシュウィンドで2分間走れる',
-      ],
-    },
-    'コース': {
-      'スタート前': [
-        'ルーティン実施（海面調査）',
-      ],
-      'スタート後': [
-        'ロングを走る',
-        'ゲインを確定できる',
-        'オーバーセールしない',
-        '振れ、ブローの見極め',
-        '艇団に対してのポジショニング',
-      ],
-    },
-  };
+  // Firestoreからチェックリスト設定を読み込む
+  Future<void> _loadChecklistConfig() async {
+    if (_myTeamId == null) return;
+
+    try {
+      final docRef = FirebaseFirestore.instance
+          .collection('teams')
+          .doc(_myTeamId)
+          .collection('settings')
+          .doc('checklist');
+
+      final doc = await docRef.get();
+
+      if (doc.exists && doc.data() != null && doc.data()!.isNotEmpty) {
+        setState(() {
+          _checklistData = doc.data()!;
+        });
+      } else {
+        await docRef.set(_defaultChecklistData);
+        setState(() {
+          _checklistData = _defaultChecklistData;
+        });
+      }
+    } catch (e) {
+      debugPrint("Error loading checklist: $e");
+      setState(() {
+        _checklistData = _defaultChecklistData;
+      });
+    }
+  }
 
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
@@ -168,8 +173,227 @@ class _LogPageState extends State<LogPage> {
     }
   }
 
+  // チェック項目追加ダイアログ
+  void _showAddItemDialog() {
+    if (_checklistData.isEmpty) return;
+
+    // カテゴリをソートして表示
+    final categories = _checklistData.keys.toList();
+    // ここは単純な辞書順か、デフォルトの順序にする
+    
+    String selectedCategory = categories.first;
+    String? selectedSubCategory;
+    
+    Map<String, dynamic> subCats = _checklistData[selectedCategory] ?? {};
+    
+    // サブカテゴリのキーを取得してソート
+    List<String> subCatKeys = subCats.keys.toList();
+    subCatKeys.sort((a, b) {
+      int idxA = _sortOrder.indexOf(a);
+      int idxB = _sortOrder.indexOf(b);
+      if (idxA != -1 && idxB != -1) return idxA.compareTo(idxB);
+      if (idxA != -1) return -1;
+      if (idxB != -1) return 1;
+      return a.compareTo(b);
+    });
+
+    if (subCatKeys.isNotEmpty) selectedSubCategory = subCatKeys.first;
+
+    final TextEditingController itemController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setStateSB) {
+            
+            return AlertDialog(
+              title: const Text('チェック項目の追加'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('新しい評価項目を追加します。\n※チーム全員に反映されます。', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  const SizedBox(height: 16),
+                  
+                  DropdownButtonFormField<String>(
+                    value: selectedCategory,
+                    decoration: const InputDecoration(labelText: '大カテゴリ', border: OutlineInputBorder()),
+                    items: categories.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+                    onChanged: (val) {
+                      setStateSB(() {
+                        selectedCategory = val!;
+                        final newSubCats = _checklistData[selectedCategory] as Map<String, dynamic>? ?? {};
+                        final newKeys = newSubCats.keys.toList();
+                        // ソート
+                         newKeys.sort((a, b) {
+                            int idxA = _sortOrder.indexOf(a);
+                            int idxB = _sortOrder.indexOf(b);
+                            if (idxA != -1 && idxB != -1) return idxA.compareTo(idxB);
+                            if (idxA != -1) return -1;
+                            if (idxB != -1) return 1;
+                            return a.compareTo(b);
+                          });
+
+                        if (newKeys.isNotEmpty) {
+                          selectedSubCategory = newKeys.first;
+                        } else {
+                          selectedSubCategory = null;
+                        }
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 16),
+
+                  DropdownButtonFormField<String>(
+                    value: selectedSubCategory,
+                    decoration: const InputDecoration(labelText: '小カテゴリ', border: OutlineInputBorder()),
+                    // 選択された大カテゴリに基づいて小カテゴリリストを再構築してソート
+                    items: () {
+                       final currentSubCats = _checklistData[selectedCategory] as Map<String, dynamic>? ?? {};
+                       final keys = currentSubCats.keys.toList();
+                       keys.sort((a, b) {
+                          int idxA = _sortOrder.indexOf(a);
+                          int idxB = _sortOrder.indexOf(b);
+                          if (idxA != -1 && idxB != -1) return idxA.compareTo(idxB);
+                          if (idxA != -1) return -1;
+                          if (idxB != -1) return 1;
+                          return a.compareTo(b);
+                       });
+                       return keys.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList();
+                    }(),
+                    onChanged: (val) => setStateSB(() => selectedSubCategory = val),
+                  ),
+                  
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: itemController,
+                    decoration: const InputDecoration(labelText: '項目名', hintText: '例：ジャイブの角度', border: OutlineInputBorder()),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(context), child: const Text('キャンセル')),
+                ElevatedButton(
+                  onPressed: () async {
+                    if (itemController.text.isNotEmpty && selectedSubCategory != null) {
+                      await _addNewItemToChecklist(selectedCategory, selectedSubCategory!, itemController.text);
+                      if (mounted) Navigator.pop(context);
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.indigo, foregroundColor: Colors.white),
+                  child: const Text('追加'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // 項目追加処理
+  Future<void> _addNewItemToChecklist(String category, String subCategory, String newItem) async {
+    if (_myTeamId == null) return;
+
+    try {
+      Map<String, dynamic> newData = Map.from(_checklistData);
+      List<String> currentList = List<String>.from(newData[category][subCategory] ?? []);
+      
+      if (!currentList.contains(newItem)) {
+        currentList.add(newItem);
+        newData[category][subCategory] = currentList;
+
+        await FirebaseFirestore.instance
+            .collection('teams')
+            .doc(_myTeamId)
+            .collection('settings')
+            .doc('checklist')
+            .set(newData);
+        
+        setState(() {
+          _checklistData = newData;
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('項目を追加しました！')));
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('追加エラー: $e')));
+      }
+    }
+  }
+
+  // 項目削除の確認ダイアログ
+  void _showDeleteConfirmDialog(String category, String subCategory, String itemToDelete) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('項目の削除'),
+          content: Text('「$itemToDelete」を削除しますか？\n※この操作は元に戻せません。チーム全員からこの項目が消えます。'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('キャンセル'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+              onPressed: () async {
+                await _deleteItemFromChecklist(category, subCategory, itemToDelete);
+                if (mounted) Navigator.pop(context);
+              },
+              child: const Text('削除する'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // 項目削除処理
+  Future<void> _deleteItemFromChecklist(String category, String subCategory, String itemToDelete) async {
+    if (_myTeamId == null) return;
+
+    try {
+      Map<String, dynamic> newData = Map.from(_checklistData);
+      List<String> currentList = List<String>.from(newData[category][subCategory] ?? []);
+      
+      if (currentList.contains(itemToDelete)) {
+        currentList.remove(itemToDelete);
+        newData[category][subCategory] = currentList;
+
+        await FirebaseFirestore.instance
+            .collection('teams')
+            .doc(_myTeamId)
+            .collection('settings')
+            .doc('checklist')
+            .set(newData);
+        
+        setState(() {
+          _checklistData = newData;
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('項目を削除しました')));
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('削除エラー: $e')));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (_checklistData.isEmpty) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return DefaultTabController(
       length: 6,
       child: Scaffold(
@@ -216,6 +440,12 @@ class _LogPageState extends State<LogPage> {
             ],
           ),
           actions: [
+            if (_isAdmin)
+              IconButton(
+                icon: const Icon(Icons.edit_note),
+                tooltip: 'チェック項目を追加',
+                onPressed: _showAddItemDialog,
+              ),
             IconButton(
               icon: const Icon(Icons.delete_outline),
               tooltip: 'この時間の記録を削除',
@@ -374,7 +604,25 @@ class _LogPageState extends State<LogPage> {
   }
 
   Widget _buildInputTab(String category) {
-    final subCategories = _checklistData[category]!;
+    final subCategories = _checklistData[category] as Map<String, dynamic>? ?? {};
+
+    // ★重要: 表示するときにキーをソートする（順序固定）
+    final sortedKeys = subCategories.keys.toList();
+    sortedKeys.sort((a, b) {
+      // 定義済みの順序があればそれを使う
+      int indexA = _sortOrder.indexOf(a);
+      int indexB = _sortOrder.indexOf(b);
+      
+      // 両方とも定義済みなら、その順序
+      if (indexA != -1 && indexB != -1) return indexA.compareTo(indexB);
+      
+      // 定義済み項目は未定義項目より先に来る
+      if (indexA != -1) return -1;
+      if (indexB != -1) return 1;
+      
+      // どちらも未定義なら名前順 (これでランダムな入れ替わりを防ぐ)
+      return a.compareTo(b);
+    });
 
     return StreamBuilder<DocumentSnapshot>(
       stream: FirebaseFirestore.instance
@@ -406,9 +654,9 @@ class _LogPageState extends State<LogPage> {
                 ),
               ),
 
-            ...subCategories.entries.map((entry) {
-              final subCatName = entry.key;
-              final items = entry.value;
+            // ★ソートされたキー順に表示
+            ...sortedKeys.map((subCatName) {
+              final items = List<String>.from(subCategories[subCatName] ?? []);
 
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -429,27 +677,35 @@ class _LogPageState extends State<LogPage> {
                   
                   ...items.map((item) {
                     int val = scores[item] ?? 0;
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      elevation: 1,
-                      child: Padding(
-                        padding: const EdgeInsets.all(12.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(item, style: const TextStyle(fontWeight: FontWeight.w500)),
-                            const SizedBox(height: 12),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: [
-                                _buildRadioBtn(item, 3, '○', val, Colors.green),
-                                const SizedBox(width: 12),
-                                _buildRadioBtn(item, 2, '△', val, Colors.orange),
-                                const SizedBox(width: 12),
-                                _buildRadioBtn(item, 1, '×', val, Colors.red),
-                              ],
-                            ),
-                          ],
+                    
+                    return GestureDetector(
+                      onLongPress: () {
+                        if (_isAdmin) {
+                          _showDeleteConfirmDialog(category, subCatName, item);
+                        }
+                      },
+                      child: Card(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        elevation: 1,
+                        child: Padding(
+                          padding: const EdgeInsets.all(12.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(item, style: const TextStyle(fontWeight: FontWeight.w500)),
+                              const SizedBox(height: 12),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: [
+                                  _buildRadioBtn(item, 3, '○', val, Colors.green),
+                                  const SizedBox(width: 12),
+                                  _buildRadioBtn(item, 2, '△', val, Colors.orange),
+                                  const SizedBox(width: 12),
+                                  _buildRadioBtn(item, 1, '×', val, Colors.red),
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     );
@@ -481,16 +737,10 @@ class _LogPageState extends State<LogPage> {
   Widget _buildAnalysisTab() {
     final currentUserUid = FirebaseAuth.instance.currentUser?.uid;
 
-    // ★重要: 他のチームの記録が混ざらないように、ユーザーID等だけでなくチームIDでも絞りたいところですが、
-    // セキュリティルールで `isSameTeam` を設定したので、チーム外のデータは読めなくなっています。
-    // ただし、念のためアプリ上でもフィルタリングするのがベストです。
-    // 今回は「同じ日・同じ時間帯」のデータ取得なので、セキュリティルールが正しく効いていればOKです。
-
     final query = FirebaseFirestore.instance
         .collection('practice_reports')
         .where('date', isEqualTo: _formattedDate)
         .where('timeSlot', isEqualTo: _timeSlot)
-        // ★追加: チームIDで絞り込み (セキュリティルールと二重の防御)
         .where('teamId', isEqualTo: _myTeamId);
 
     if (_myTeamId == null) {
@@ -792,10 +1042,10 @@ class _LogPageState extends State<LogPage> {
     );
   }
 
-  // ★修正: チームIDも一緒に保存
+  // Firestoreへ保存
   Future<void> _saveScore(String item, int value) async {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null || _myTeamId == null) return; // チームIDがなければ保存しない
+    if (user == null || _myTeamId == null) return;
 
     final userName = await _getUserName(user);
 
@@ -805,13 +1055,12 @@ class _LogPageState extends State<LogPage> {
       'timeSlot': _timeSlot,
       'userId': user.uid,
       'userName': userName,
-      'teamId': _myTeamId, // ★追加
+      'teamId': _myTeamId,
       'scores': {item: value},
       'lastUpdated': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
   }
 
-  // ★修正: チームIDも一緒に保存
   Future<void> _saveComment(String category, String text) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null || _myTeamId == null) return;
@@ -822,12 +1071,11 @@ class _LogPageState extends State<LogPage> {
       'userName': userName,
       'timeSlot': _timeSlot,
       'date': _formattedDate,
-      'teamId': _myTeamId, // ★追加
+      'teamId': _myTeamId,
       'comment_$category': text,
     }, SetOptions(merge: true));
   }
 
-  // ★修正: チームIDも一緒に保存
   Future<void> _saveCondition(String key, dynamic value) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null || _myTeamId == null) return;
@@ -835,7 +1083,7 @@ class _LogPageState extends State<LogPage> {
     await FirebaseFirestore.instance.collection('practice_reports').doc(_documentId).set({
       'timeSlot': _timeSlot,
       'date': _formattedDate,
-      'teamId': _myTeamId, // ★追加
+      'teamId': _myTeamId,
       key: value,
     }, SetOptions(merge: true));
   }

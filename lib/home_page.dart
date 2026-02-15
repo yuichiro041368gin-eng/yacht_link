@@ -28,20 +28,13 @@ class _HomePageState extends State<HomePage> {
   // 自分のチームIDを保持する変数
   String? _myTeamId;
 
-  // --- グラフ用定数・定義 ---
-  final Map<String, List<String>> _radarCategories = {
-    '動作': ['適切なヒール量、ロール量', 'ヘルム使えてるか', 'メイン、ジブ引いてこれてるか', '煽りの加速感', '船を揺らさない', 'タック後のリーチ', '動作前後のスピードがあるか', '逆ジブ量', 'かかってる時間', '船のアングル'],
-    'セール\nトリム': ['シーティングスタイルの確立', 'ジブは両ピロ、メインはリーチ崩さない', '風の強弱に合わせられる', 'コントロールロープ適切に扱える', '波に合わせられる'],
-    'ヒール\nトリム': ['ヒール（ヘルム）が一定', '波の海面での微ヒール、フラット', 'しっかりハイクアウトできているか', 'ランニングの一定パワーとヒール'],
-    'VMG': ['スピードファースト', '角度とれる'],
-    'スタート': ['下のルーム1.5艇幅確保', '微速前進ができる', '動作の確認（煽り）', 'ライン感覚（見通し）', 'デンジャーの見極め（潮・振れ）', '自艇の上下艇よりバウ出す', 'フルスピード', 'フレッシュウィンドで2分間走れる'],
-    'コース': ['ルーティン実施（海面調査）', 'ロングを走る', 'ゲインを確定できる', 'オーバーセールしない', '振れ、ブローの見極め', '艇団に対してのポジショニング'],
-  };
+  // チャートの軸ラベル（固定）
+  final List<String> _radarAxisTitles = ['動作', 'セール\nトリム', 'ヒール\nトリム', 'VMG', 'スタート', 'コース'];
 
   @override
   void initState() {
     super.initState();
-    _fetchMyTeamId(); // 起動時にチームIDを取得
+    _fetchMyTeamId();
   }
 
   // 自分のチームIDを取得する
@@ -66,7 +59,6 @@ class _HomePageState extends State<HomePage> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
     
-    // チームIDが取れていない場合は保存しない
     if (_myTeamId == null) return;
 
     final userName = await _getUserName(user);
@@ -76,7 +68,7 @@ class _HomePageState extends State<HomePage> {
       'createdAt': FieldValue.serverTimestamp(),
       'userId': user.uid,
       'userName': userName,
-      'teamId': _myTeamId, // チームIDを保存
+      'teamId': _myTeamId, 
       'type': 'personal_analysis'
     });
 
@@ -89,8 +81,6 @@ class _HomePageState extends State<HomePage> {
   void _showHistoryDialog() {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
-    
-    // チームIDがまだ取れていない場合は何もしない（あるいはロード中表示）
     if (_myTeamId == null) return;
 
     showModalBottomSheet(
@@ -109,7 +99,6 @@ class _HomePageState extends State<HomePage> {
                 stream: FirebaseFirestore.instance
                     .collection('team_analysis_logs')
                     .where('userId', isEqualTo: user.uid)
-                    // ★重要: ここにも teamId の絞り込みを追加しないとエラーになります
                     .where('teamId', isEqualTo: _myTeamId)
                     .orderBy('createdAt', descending: true)
                     .limit(20)
@@ -178,7 +167,6 @@ class _HomePageState extends State<HomePage> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
     
-    // チームID取得待ち
     if (_myTeamId == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('チーム情報を読み込み中です。少々お待ちください。')));
       return;
@@ -195,7 +183,6 @@ class _HomePageState extends State<HomePage> {
       final snapshot = await FirebaseFirestore.instance
           .collection('practice_reports')
           .where('userId', isEqualTo: user.uid)
-          // ★修正: ここに teamId の絞り込みを追加しました！
           .where('teamId', isEqualTo: _myTeamId)
           .orderBy('date', descending: true)
           .limit(10)
@@ -249,15 +236,58 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  // --- グラフデータ取得 ---
+  // --- グラフデータ取得（動的対応） ---
   Future<Map<String, List<double>>> _fetchChartData() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return {};
-    
-    // チームIDがまだ取得できていない場合は待つか空を返す
     if (_myTeamId == null) return {};
 
     try {
+      // 1. 最新のチェックリスト設定を取得
+      // これにより、ユーザーが追加した項目もグラフ計算に含まれるようになります
+      Map<String, List<String>> currentRadarMap = {};
+      
+      final checklistDoc = await FirebaseFirestore.instance
+          .collection('teams')
+          .doc(_myTeamId)
+          .collection('settings')
+          .doc('checklist')
+          .get();
+
+      if (checklistDoc.exists && checklistDoc.data() != null) {
+        final data = checklistDoc.data()!;
+        
+        // データベースの構造を、レーダーチャートの6軸にマッピング
+        // '動作' 軸
+        currentRadarMap['動作'] = List<String>.from(data['動作']?['動作'] ?? []);
+        
+        // 'セール\nトリム' 軸
+        currentRadarMap['セール\nトリム'] = List<String>.from(data['セーリング']?['セールトリム'] ?? []);
+        
+        // 'ヒール\nトリム' 軸 (旧: バランス)
+        currentRadarMap['ヒール\nトリム'] = List<String>.from(data['セーリング']?['バランス'] ?? []);
+        
+        // 'VMG' 軸
+        currentRadarMap['VMG'] = List<String>.from(data['セーリング']?['VMG'] ?? []);
+        
+        // 'スタート' 軸 (サブカテゴリ全て合算)
+        List<String> startItems = [];
+        final startMap = data['スタート'] as Map<String, dynamic>? ?? {};
+        startMap.forEach((_, v) => startItems.addAll(List<String>.from(v)));
+        currentRadarMap['スタート'] = startItems;
+
+        // 'コース' 軸 (サブカテゴリ全て合算)
+        List<String> courseItems = [];
+        final courseMap = data['コース'] as Map<String, dynamic>? ?? {};
+        courseMap.forEach((_, v) => courseItems.addAll(List<String>.from(v)));
+        currentRadarMap['コース'] = courseItems;
+
+      } else {
+        // データがない場合は空を返す（またはデフォルト値）
+        return {};
+      }
+
+      // 2. 直近のレポートを取得
       final now = DateTime.now();
       final pastMonth = now.subtract(const Duration(days: 60));
       final DateFormat formatter = DateFormat('yyyy-MM-dd');
@@ -265,18 +295,18 @@ class _HomePageState extends State<HomePage> {
       final snapshot = await FirebaseFirestore.instance
           .collection('practice_reports')
           .where('userId', isEqualTo: user.uid)
-          // チームIDフィルタリング
           .where('teamId', isEqualTo: _myTeamId) 
           .where('date', isGreaterThanOrEqualTo: formatter.format(pastMonth))
           .get();
 
+      // 3. 集計処理
       Map<String, Map<String, List<int>>> aggregated = {
         'light': {}, 'medium': {}, 'heavy': {},
       };
 
       for (var wind in ['light', 'medium', 'heavy']) {
-        for (var cat in _radarCategories.keys) {
-          aggregated[wind]![cat] = [0, 0];
+        for (var axis in _radarAxisTitles) {
+          aggregated[wind]![axis] = [0, 0];
         }
       }
 
@@ -298,11 +328,12 @@ class _HomePageState extends State<HomePage> {
           windKey = 'medium';
         }
 
-        _radarCategories.forEach((categoryName, items) {
+        // 動的に取得した項目リストを使って集計
+        currentRadarMap.forEach((axisName, items) {
           for (var item in items) {
             if (scores.containsKey(item) && scores[item] is int && scores[item] > 0) {
-              aggregated[windKey]![categoryName]![0] += scores[item] as int;
-              aggregated[windKey]![categoryName]![1] += 1;
+              aggregated[windKey]![axisName]![0] += scores[item] as int;
+              aggregated[windKey]![axisName]![1] += 1;
             }
           }
         });
@@ -311,9 +342,9 @@ class _HomePageState extends State<HomePage> {
       Map<String, List<double>> result = {};
       for (var wind in ['light', 'medium', 'heavy']) {
         List<double> averages = [];
-        for (var cat in _radarCategories.keys) {
-          final sum = aggregated[wind]![cat]![0];
-          final count = aggregated[wind]![cat]![1];
+        for (var axis in _radarAxisTitles) {
+          final sum = aggregated[wind]![axis]![0];
+          final count = aggregated[wind]![axis]![1];
           averages.add(count > 0 ? sum / count : 0.0);
         }
         result[wind] = averages;
@@ -425,8 +456,8 @@ class _HomePageState extends State<HomePage> {
                     titlePositionPercentageOffset: 0.1,
                     titleTextStyle: const TextStyle(color: Colors.black87, fontSize: 12, fontWeight: FontWeight.bold),
                     getTitle: (index, angle) {
-                      if (index < _radarCategories.keys.length) {
-                        return RadarChartTitle(text: _radarCategories.keys.elementAt(index));
+                      if (index < _radarAxisTitles.length) {
+                        return RadarChartTitle(text: _radarAxisTitles[index]);
                       }
                       return const RadarChartTitle(text: '');
                     },
@@ -447,7 +478,7 @@ class _HomePageState extends State<HomePage> {
 
   RadarDataSet _buildRadarDataSet(List<double> values, Color color) {
     if (values.every((v) => v == 0)) {
-       return RadarDataSet(dataEntries: _radarCategories.keys.map((_) => const RadarEntry(value: 0)).toList(), borderColor: Colors.transparent, fillColor: Colors.transparent);
+       return RadarDataSet(dataEntries: _radarAxisTitles.map((_) => const RadarEntry(value: 0)).toList(), borderColor: Colors.transparent, fillColor: Colors.transparent);
     }
 
     return RadarDataSet(
