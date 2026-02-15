@@ -1,0 +1,24 @@
+{
+    "name": "YachtLink - ヨット部AI分析",
+    "short_name": "YachtLink",
+    "start_url": ".",
+    "display": "standalone",
+    "background_color": "#3F51B5",
+    "theme_color": "#3F51B5",
+    "description": "ヨット部のためのAIコーチング＆練習日誌アプリ",
+    "orientation": "portrait-primary",
+    "prefer_related_applications": false,
+    "icons": [
+        {
+            "src": "icons/Icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "icons/Icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        }
+    ]
+}

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1074092443502",
+    "project_id": "yacht-link-app-2026",
+    "storage_bucket": "yacht-link-app-2026.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1074092443502:android:24fcbb6fda89315dc6e37f",
+        "android_client_info": {
+          "package_name": "com.example.yacht_link"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyByY1tZPui9boyggQ_SOPFEju7uL3YlqzY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

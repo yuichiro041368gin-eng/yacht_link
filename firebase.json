@@ -1,0 +1,39 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "yacht-link-app-2026",
+          "appId": "1:1074092443502:android:24fcbb6fda89315dc6e37f",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "yacht-link-app-2026",
+          "configurations": {
+            "android": "1:1074092443502:android:24fcbb6fda89315dc6e37f",
+            "ios": "1:1074092443502:ios:8e2a7723e4503c8bc6e37f",
+            "macos": "1:1074092443502:ios:8e2a7723e4503c8bc6e37f",
+            "web": "1:1074092443502:web:58681bfb71498570c6e37f",
+            "windows": "1:1074092443502:web:fb2ebbb1afa4eed1c6e37f"
+          }
+        }
+      }
+    }
+  },
+  "hosting": {
+    "public": "build/web",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
+}
