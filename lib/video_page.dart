@@ -321,8 +321,13 @@ class _VideoPageState extends State<VideoPage> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
+                          // ★修正箇所: 再生ボタンに色とサイズを指定
                           IconButton(
-                            icon: Icon(_videoController!.value.isPlaying ? Icons.pause : Icons.play_arrow),
+                            icon: Icon(
+                              _videoController!.value.isPlaying ? Icons.pause : Icons.play_arrow,
+                              color: Colors.indigo, // はっきりした色を指定
+                              size: 32,             // 少し大きくする
+                            ),
                             onPressed: () => setState(() => _videoController!.value.isPlaying ? _videoController!.pause() : _videoController!.play()),
                           ),
                           TextButton.icon(
