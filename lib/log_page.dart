@@ -17,9 +17,14 @@ class _LogPageState extends State<LogPage> {
   
   String _timeSlot = 'AM'; // 'AM' or 'PM'
   
-  // チームIDと権限
+  // チームIDと権限、ユーザー名
   String? _myTeamId;
   bool _isAdmin = false;
+  String _myUserName = '匿名'; 
+
+  // ★追加: 画面の即時反映用（楽観的更新データ）
+  // データベースの反応を待たずに、ここに入っている値を優先して表示します
+  final Map<String, int> _optimisticScores = {};
 
   String get _documentId {
     final uid = FirebaseAuth.instance.currentUser?.uid ?? "guest";
@@ -58,7 +63,7 @@ class _LogPageState extends State<LogPage> {
     },
   };
 
-  // ★追加: 表示順序を固定するための優先順位リスト
+  // 表示順序を固定するための優先順位リスト
   final List<String> _sortOrder = [
     '動作',
     'セールトリム', 'バランス', 'VMG',
@@ -74,6 +79,13 @@ class _LogPageState extends State<LogPage> {
     _fetchUserInfo();
   }
 
+  // 日付や時間が変わったら、一時データをリセット
+  void _resetOptimisticData() {
+    setState(() {
+      _optimisticScores.clear();
+    });
+  }
+
   // ユーザー情報とチームID、チェックリスト設定を取得
   Future<void> _fetchUserInfo() async {
     final user = FirebaseAuth.instance.currentUser;
@@ -86,6 +98,9 @@ class _LogPageState extends State<LogPage> {
         setState(() {
           _myTeamId = data['teamId'];
           _isAdmin = data['role'] == 'admin';
+          if (data.containsKey('name') && data['name'].toString().isNotEmpty) {
+            _myUserName = data['name'];
+          }
         });
 
         if (_myTeamId != null) {
@@ -97,7 +112,6 @@ class _LogPageState extends State<LogPage> {
     }
   }
 
-  // Firestoreからチェックリスト設定を読み込む
   Future<void> _loadChecklistConfig() async {
     if (_myTeamId == null) return;
 
@@ -136,6 +150,7 @@ class _LogPageState extends State<LogPage> {
       lastDate: DateTime(2030),
     );
     if (picked != null && picked != _selectedDate) {
+      _resetOptimisticData(); // 日付変更時にリセット
       setState(() {
         _selectedDate = picked;
       });
@@ -162,6 +177,7 @@ class _LogPageState extends State<LogPage> {
     if (confirm == true) {
       try {
         await FirebaseFirestore.instance.collection('practice_reports').doc(_documentId).delete();
+        _resetOptimisticData();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('削除しました')));
         }
@@ -173,20 +189,15 @@ class _LogPageState extends State<LogPage> {
     }
   }
 
-  // チェック項目追加ダイアログ
   void _showAddItemDialog() {
     if (_checklistData.isEmpty) return;
 
-    // カテゴリをソートして表示
     final categories = _checklistData.keys.toList();
-    // ここは単純な辞書順か、デフォルトの順序にする
-    
     String selectedCategory = categories.first;
     String? selectedSubCategory;
     
     Map<String, dynamic> subCats = _checklistData[selectedCategory] ?? {};
     
-    // サブカテゴリのキーを取得してソート
     List<String> subCatKeys = subCats.keys.toList();
     subCatKeys.sort((a, b) {
       int idxA = _sortOrder.indexOf(a);
@@ -206,7 +217,6 @@ class _LogPageState extends State<LogPage> {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setStateSB) {
-            
             return AlertDialog(
               title: const Text('チェック項目の追加'),
               content: Column(
@@ -224,7 +234,6 @@ class _LogPageState extends State<LogPage> {
                         selectedCategory = val!;
                         final newSubCats = _checklistData[selectedCategory] as Map<String, dynamic>? ?? {};
                         final newKeys = newSubCats.keys.toList();
-                        // ソート
                          newKeys.sort((a, b) {
                             int idxA = _sortOrder.indexOf(a);
                             int idxB = _sortOrder.indexOf(b);
@@ -247,7 +256,6 @@ class _LogPageState extends State<LogPage> {
                   DropdownButtonFormField<String>(
                     value: selectedSubCategory,
                     decoration: const InputDecoration(labelText: '小カテゴリ', border: OutlineInputBorder()),
-                    // 選択された大カテゴリに基づいて小カテゴリリストを再構築してソート
                     items: () {
                        final currentSubCats = _checklistData[selectedCategory] as Map<String, dynamic>? ?? {};
                        final keys = currentSubCats.keys.toList();
@@ -291,7 +299,6 @@ class _LogPageState extends State<LogPage> {
     );
   }
 
-  // 項目追加処理
   Future<void> _addNewItemToChecklist(String category, String subCategory, String newItem) async {
     if (_myTeamId == null) return;
 
@@ -325,7 +332,6 @@ class _LogPageState extends State<LogPage> {
     }
   }
 
-  // 項目削除の確認ダイアログ
   void _showDeleteConfirmDialog(String category, String subCategory, String itemToDelete) {
     showDialog(
       context: context,
@@ -352,7 +358,6 @@ class _LogPageState extends State<LogPage> {
     );
   }
 
-  // 項目削除処理
   Future<void> _deleteItemFromChecklist(String category, String subCategory, String itemToDelete) async {
     if (_myTeamId == null) return;
 
@@ -424,6 +429,7 @@ class _LogPageState extends State<LogPage> {
                   onPressed: (index) {
                     setState(() {
                       _timeSlot = index == 0 ? 'AM' : 'PM';
+                      _resetOptimisticData(); // 時間帯変更時にリセット
                     });
                   },
                   borderRadius: BorderRadius.circular(8),
@@ -606,21 +612,13 @@ class _LogPageState extends State<LogPage> {
   Widget _buildInputTab(String category) {
     final subCategories = _checklistData[category] as Map<String, dynamic>? ?? {};
 
-    // ★重要: 表示するときにキーをソートする（順序固定）
     final sortedKeys = subCategories.keys.toList();
     sortedKeys.sort((a, b) {
-      // 定義済みの順序があればそれを使う
       int indexA = _sortOrder.indexOf(a);
       int indexB = _sortOrder.indexOf(b);
-      
-      // 両方とも定義済みなら、その順序
       if (indexA != -1 && indexB != -1) return indexA.compareTo(indexB);
-      
-      // 定義済み項目は未定義項目より先に来る
       if (indexA != -1) return -1;
       if (indexB != -1) return 1;
-      
-      // どちらも未定義なら名前順 (これでランダムな入れ替わりを防ぐ)
       return a.compareTo(b);
     });
 
@@ -634,7 +632,7 @@ class _LogPageState extends State<LogPage> {
         if (snapshot.hasData && snapshot.data!.exists) {
           currentData = snapshot.data!.data() as Map<String, dynamic>;
         }
-        Map<String, dynamic> scores = currentData['scores'] ?? {};
+        Map<String, dynamic> serverScores = currentData['scores'] ?? {}; // Firestoreのデータ
         String initialComment = currentData['comment_$category'] ?? '';
 
         return ListView(
@@ -654,7 +652,6 @@ class _LogPageState extends State<LogPage> {
                 ),
               ),
 
-            // ★ソートされたキー順に表示
             ...sortedKeys.map((subCatName) {
               final items = List<String>.from(subCategories[subCatName] ?? []);
 
@@ -676,7 +673,9 @@ class _LogPageState extends State<LogPage> {
                   const SizedBox(height: 8),
                   
                   ...items.map((item) {
-                    int val = scores[item] ?? 0;
+                    // ★重要: 「今押した値 (_optimisticScores)」があればそれを優先表示
+                    // なければ「サーバーの値 (serverScores)」を表示
+                    int val = _optimisticScores[item] ?? serverScores[item] ?? 0;
                     
                     return GestureDetector(
                       onLongPress: () {
@@ -697,6 +696,7 @@ class _LogPageState extends State<LogPage> {
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.end,
                                 children: [
+                                  // ★修正: タッチ反応を良くするために Material/InkWell を使用
                                   _buildRadioBtn(item, 3, '○', val, Colors.green),
                                   const SizedBox(width: 12),
                                   _buildRadioBtn(item, 2, '△', val, Colors.orange),
@@ -997,66 +997,61 @@ class _LogPageState extends State<LogPage> {
     return date.year == now.year && date.month == now.month && date.day == now.day;
   }
 
-  Future<String> _getUserName(User user) async {
-    try {
-      final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
-      final data = doc.data();
-      if (data != null && data.containsKey('name') && data['name'].toString().isNotEmpty) {
-        return data['name'];
-      }
-    } catch (e) {
-      debugPrint('Error fetching user name: $e');
-    }
-    return user.email?.split('@')[0] ?? '匿名';
-  }
-
+  // ★修正: デザインとタッチ反応を改善
   Widget _buildRadioBtn(String item, int value, String label, int currentVal, Color color) {
     final isSelected = value == currentVal;
-    return InkWell(
-      onTap: () {
-        if (isSelected) {
-          _saveScore(item, 0); 
-        } else {
-          _saveScore(item, value);
-        }
-      },
-      borderRadius: BorderRadius.circular(30),
-      child: Container(
-        width: 48,
-        height: 48,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: isSelected ? color : Colors.white,
-          border: Border.all(color: isSelected ? color : Colors.grey[300]!, width: isSelected ? 2 : 1),
-          shape: BoxShape.circle,
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? Colors.white : Colors.grey,
-            fontWeight: FontWeight.bold,
-            fontSize: 20,
+    
+    // Materialを使うことで、リップルエフェクト（波紋）が色の上でも見えるようになります
+    return Material(
+      color: isSelected ? color : Colors.white,
+      shape: CircleBorder(
+        side: BorderSide(color: isSelected ? color : Colors.grey[300]!, width: isSelected ? 2 : 1),
+      ),
+      clipBehavior: Clip.hardEdge,
+      child: InkWell(
+        onTap: () {
+          // ★修正: 即時反映ロジック
+          // まずはsetStateで画面の色を即座に変える
+          int newValue = isSelected ? 0 : value;
+          setState(() {
+            _optimisticScores[item] = newValue;
+          });
+          // その後、裏でゆっくり保存する
+          _saveScore(item, newValue);
+        },
+        child: Container(
+          width: 48,
+          height: 48,
+          alignment: Alignment.center,
+          child: Text(
+            label,
+            style: TextStyle(
+              color: isSelected ? Colors.white : Colors.grey,
+              fontWeight: FontWeight.bold,
+              fontSize: 20,
+            ),
           ),
         ),
       ),
     );
   }
 
-  // Firestoreへ保存
+  // ★修正: 毎回ユーザー名をfetchせず、キャッシュした名前を使う
   Future<void> _saveScore(String item, int value) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null || _myTeamId == null) return;
 
-    final userName = await _getUserName(user);
-
+    // ここで _getUserName を呼ぶと遅延の原因になるため削除し、_myUserNameを使用
     final docRef = FirebaseFirestore.instance.collection('practice_reports').doc(_documentId);
+    
+    // データセット（ドット記法で、特定のキーだけを効率的に更新）
     await docRef.set({
       'date': _formattedDate,
       'timeSlot': _timeSlot,
       'userId': user.uid,
-      'userName': userName,
+      'userName': _myUserName, // キャッシュ済みの名前を使用
       'teamId': _myTeamId,
-      'scores': {item: value},
+      'scores': {item: value}, // deep mergeされるのでこれでもOKだが、念のため
       'lastUpdated': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
   }
@@ -1065,10 +1060,8 @@ class _LogPageState extends State<LogPage> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null || _myTeamId == null) return;
 
-    final userName = await _getUserName(user);
-
     await FirebaseFirestore.instance.collection('practice_reports').doc(_documentId).set({
-      'userName': userName,
+      'userName': _myUserName, // キャッシュ済みの名前を使用
       'timeSlot': _timeSlot,
       'date': _formattedDate,
       'teamId': _myTeamId,

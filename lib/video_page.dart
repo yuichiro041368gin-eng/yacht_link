@@ -21,13 +21,17 @@ class _VideoPageState extends State<VideoPage> {
 
   XFile? _videoFile;
   VideoPlayerController? _videoController;
+  
+  // ★追加: ユーザーの指示入力用コントローラー
+  final TextEditingController _promptController = TextEditingController();
+
   String _resultText = '';
   String _analyzedDate = '';
   String _analyzedVideoName = '';
   String _analyzedBy = '';
   bool _isLoading = false;
   
-  // ★追加: チームID
+  // チームID
   String? _myTeamId;
 
   @override
@@ -36,7 +40,7 @@ class _VideoPageState extends State<VideoPage> {
     _fetchMyTeamId();
   }
 
-  // ★追加: チームID取得
+  // チームID取得
   Future<void> _fetchMyTeamId() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
@@ -53,23 +57,25 @@ class _VideoPageState extends State<VideoPage> {
   @override
   void dispose() {
     _videoController?.dispose();
+    _promptController.dispose(); // ★追加: メモリ解放
     super.dispose();
   }
 
   // --- 🔥 Firestore共有ロジック ---
   Future<void> _saveHistory(String text, String videoName) async {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null || _myTeamId == null) return; // チームIDがないと保存できない
+    if (user == null || _myTeamId == null) return; 
 
     final userName = await _getUserName(user);
 
     await FirebaseFirestore.instance.collection('video_analysis_logs').add({
       'content': text,
       'videoName': videoName,
+      'userPrompt': _promptController.text, // ★追加: どんな指示を出したかも保存
       'createdAt': FieldValue.serverTimestamp(),
       'userId': user.uid,
       'userName': userName,
-      'teamId': _myTeamId, // ★重要: チームIDを保存
+      'teamId': _myTeamId, 
     });
     
     setState(() {
@@ -80,7 +86,6 @@ class _VideoPageState extends State<VideoPage> {
   }
 
   void _showHistoryDialog() {
-    // チームIDが取れていない場合は何もしない
     if (_myTeamId == null) return;
 
     showModalBottomSheet(
@@ -98,17 +103,16 @@ class _VideoPageState extends State<VideoPage> {
               child: StreamBuilder<QuerySnapshot>(
                 stream: FirebaseFirestore.instance
                     .collection('video_analysis_logs')
-                    .where('teamId', isEqualTo: _myTeamId) // ★重要: 自チームのみ表示
+                    .where('teamId', isEqualTo: _myTeamId)
                     .orderBy('createdAt', descending: true)
                     .limit(20)
                     .snapshots(),
                 builder: (context, snapshot) {
                   if (snapshot.hasError) {
-                     // インデックスエラー等の対応
-                     if (snapshot.error.toString().contains('requires an index')) {
-                       return const Center(child: Text('インデックスが必要です(デバッグコンソールを確認)', style: TextStyle(color: Colors.red)));
-                     }
-                     return Center(child: Text('エラー: ${snapshot.error}'));
+                      if (snapshot.error.toString().contains('requires an index')) {
+                        return const Center(child: Text('インデックスが必要です(デバッグコンソールを確認)', style: TextStyle(color: Colors.red)));
+                      }
+                      return Center(child: Text('エラー: ${snapshot.error}'));
                   }
                   if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
                   
@@ -123,6 +127,9 @@ class _VideoPageState extends State<VideoPage> {
                       final videoName = data['videoName'] ?? '名称不明';
                       final user = data['userName'] ?? '匿名';
                       final contentStr = data['content'] as String? ?? '';
+                      // ユーザーの指示があれば表示に追加
+                      final userPrompt = data['userPrompt'] as String? ?? '';
+                      
                       final preview = contentStr.replaceAll('\n', ' ').substring(0, (contentStr.length > 30) ? 30 : contentStr.length);
 
                       return ListTile(
@@ -131,7 +138,15 @@ class _VideoPageState extends State<VideoPage> {
                           child: const Icon(Icons.movie_creation, color: Colors.indigo),
                         ),
                         title: Text(dateStr, style: const TextStyle(fontWeight: FontWeight.bold)),
-                        subtitle: Text('$user ($videoName)\n$preview...', maxLines: 2, overflow: TextOverflow.ellipsis),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('$user ($videoName)'),
+                            if (userPrompt.isNotEmpty)
+                              Text('Q: $userPrompt', style: TextStyle(color: Colors.indigo.shade300, fontSize: 12)),
+                            Text('A: $preview...'),
+                          ],
+                        ),
                         isThreeLine: true,
                         onTap: () {
                           setState(() {
@@ -139,6 +154,8 @@ class _VideoPageState extends State<VideoPage> {
                             _analyzedDate = dateStr;
                             _analyzedVideoName = videoName;
                             _analyzedBy = user;
+                            // 履歴から復元するときは入力欄には反映しない、またはクリアする
+                            _promptController.text = userPrompt; 
                           });
                           Navigator.pop(context);
                         },
@@ -190,6 +207,7 @@ class _VideoPageState extends State<VideoPage> {
         _videoController = controller;
         _resultText = ''; 
         _analyzedDate = '';
+        _promptController.clear(); // 動画を選び直したらテキストもクリア
       });
     }
   }
@@ -197,7 +215,6 @@ class _VideoPageState extends State<VideoPage> {
   Future<void> _analyzeVideo() async {
     if (_videoFile == null) return;
     
-    // チームID取得待ち
     if (_myTeamId == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('チーム情報を読み込んでいます...')));
       return;
@@ -228,10 +245,25 @@ class _VideoPageState extends State<VideoPage> {
     try {
       final videoBytes = await _videoFile!.readAsBytes();
       final model = GenerativeModel(model: 'gemini-3-flash-preview', apiKey: _apiKey);
-      final prompt = 'このヨットの動画を見て、セーリングのフォーム、動作、風への対応などについて、良い点と改善点をコーチとして具体的にアドバイスしてください。出力はMarkdown形式で見やすく整理してください。';
       
+      // ★修正: ユーザー入力をプロンプトに組み込む
+      String userInstruction = _promptController.text.trim();
+      
+      StringBuffer promptBuffer = StringBuffer();
+      promptBuffer.writeln("あなたはプロのヨット競技コーチです。この動画を見て、セーリングの技術についてアドバイスしてください。");
+      
+      if (userInstruction.isNotEmpty) {
+        promptBuffer.writeln("\n【選手からの相談・補足情報】");
+        promptBuffer.writeln(userInstruction);
+        promptBuffer.writeln("\nこれらを踏まえて、良い点と改善点を具体的に教えてください。");
+      } else {
+        promptBuffer.writeln("特に、フォーム、動作、風への対応などについて、良い点と改善点を具体的に教えてください。");
+      }
+      
+      promptBuffer.writeln("\n出力はMarkdown形式で見やすく整理してください。");
+
       final content = [
-        Content.multi([TextPart(prompt), DataPart('video/mp4', videoBytes)])
+        Content.multi([TextPart(promptBuffer.toString()), DataPart('video/mp4', videoBytes)])
       ];
 
       final response = await model.generateContent(content);
@@ -321,12 +353,11 @@ class _VideoPageState extends State<VideoPage> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          // ★修正箇所: 再生ボタンに色とサイズを指定
                           IconButton(
                             icon: Icon(
                               _videoController!.value.isPlaying ? Icons.pause : Icons.play_arrow,
-                              color: Colors.indigo, // はっきりした色を指定
-                              size: 32,             // 少し大きくする
+                              color: Colors.indigo,
+                              size: 32,
                             ),
                             onPressed: () => setState(() => _videoController!.value.isPlaying ? _videoController!.pause() : _videoController!.play()),
                           ),
@@ -339,6 +370,23 @@ class _VideoPageState extends State<VideoPage> {
                       ),
                     ),
                   ],
+                ),
+              ),
+
+            const SizedBox(height: 20),
+
+            // ★追加: ユーザー指示入力欄
+            if (_videoFile != null && !_isLoading)
+              TextField(
+                controller: _promptController,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  labelText: 'AIへの指示・補足 (任意)',
+                  hintText: '例：ジャイブの瞬間の足の位置を見てください。\n例：この時の風速は5m/sです。',
+                  border: OutlineInputBorder(),
+                  filled: true,
+                  fillColor: Colors.white,
+                  alignLabelWithHint: true,
                 ),
               ),
 

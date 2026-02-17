@@ -1,11 +1,13 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // クリップボード用
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:url_launcher/url_launcher.dart'; // URLを開く用
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -23,12 +25,12 @@ class _HomePageState extends State<HomePage> {
   String _analyzedBy = '';
   bool _isLoading = false;
   bool _hasAnalyzed = false;
-  String _loadingMessage = '';
   
-  // 自分のチームIDを保持する変数
+  String _loadingMessage = '';
+  String? _errorUrl; 
+
   String? _myTeamId;
 
-  // チャートの軸ラベル（固定）
   final List<String> _radarAxisTitles = ['動作', 'セール\nトリム', 'ヒール\nトリム', 'VMG', 'スタート', 'コース'];
 
   @override
@@ -37,7 +39,6 @@ class _HomePageState extends State<HomePage> {
     _fetchMyTeamId();
   }
 
-  // 自分のチームIDを取得する
   Future<void> _fetchMyTeamId() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
@@ -54,12 +55,9 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  // --- 🔥 Firestore共有ロジック ---
   Future<void> _saveResult(String text) async {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-    
-    if (_myTeamId == null) return;
+    if (user == null || _myTeamId == null) return;
 
     final userName = await _getUserName(user);
 
@@ -80,8 +78,7 @@ class _HomePageState extends State<HomePage> {
 
   void _showHistoryDialog() {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-    if (_myTeamId == null) return;
+    if (user == null || _myTeamId == null) return;
 
     showModalBottomSheet(
       context: context,
@@ -175,54 +172,85 @@ class _HomePageState extends State<HomePage> {
     setState(() {
       _isLoading = true;
       _hasAnalyzed = true;
-      _loadingMessage = 'データを収集しています...';
+      _loadingMessage = 'Step 1/3: データを検索しています...';
       _resultText = '';
+      _errorUrl = null;
     });
 
     try {
-      // ★修正: 最新の3件だけ取得（1日分ならAM/PMで2件、予備で3件あれば十分）
+      // Step 1: データ取得
       final snapshot = await FirebaseFirestore.instance
           .collection('practice_reports')
           .where('userId', isEqualTo: user.uid)
           .where('teamId', isEqualTo: _myTeamId)
           .orderBy('date', descending: true)
           .limit(3) 
-          .get();
+          .get()
+          .timeout(const Duration(seconds: 10), onTimeout: () {
+            throw TimeoutException('データの取得に時間がかかりすぎています。\nおそらくインデックスが必要です。');
+          });
 
       if (snapshot.docs.isEmpty) {
         setState(() {
           _isLoading = false;
-          _resultText = '分析に必要なデータがありません。\nまずは日誌を投稿してください。';
+          _resultText = 'データが見つかりませんでした。\n\n・日誌を投稿していますか？\n・チームIDは正しいですか？';
         });
         return;
       }
 
-      setState(() => _loadingMessage = 'AIコーチが分析レポートを作成中...');
+      setState(() => _loadingMessage = 'Step 2/3: データを整形しています (${snapshot.docs.length}件取得)...');
       
-      // ★追加: 最新の日付を取得し、その日付のデータだけを抽出する
       final String latestDate = snapshot.docs.first.data()['date'];
 
       StringBuffer promptBuffer = StringBuffer();
       promptBuffer.writeln("あなたはプロのヨット競技コーチです。");
       promptBuffer.writeln("以下の選手（ユーザー）の直近（$latestDate）の練習データを元に、『課題』と『具体的な練習メニュー』をアドバイスしてください。");
+      promptBuffer.writeln("※スコアの意味: 3=良(○), 2=普通(△), 1=悪(×)");
       promptBuffer.writeln("---");
       
       for (var doc in snapshot.docs) {
         final r = doc.data();
-        // ★追加: 違う日付のデータが出てきたらループを終了（直近1日分のみにする）
         if (r['date'] != latestDate) break;
 
-        promptBuffer.writeln("日付: ${r['date']} (${r['timeSlot'] ?? ''})");
+        promptBuffer.writeln("## 日時: ${r['date']} (${r['timeSlot'] ?? ''})");
         if(r.containsKey('windSpeedMin')) promptBuffer.writeln("- 風速: ${r['windSpeedMin']}m - ${r['windSpeedMax']}m");
-        if(r.containsKey('comment_動作')) promptBuffer.writeln("- 動作メモ: ${r['comment_動作']}");
-        if(r.containsKey('comment_コース')) promptBuffer.writeln("- コースメモ: ${r['comment_コース']}");
+        
+        if(r.containsKey('comment_動作')) promptBuffer.writeln("- 【動作メモ】: ${r['comment_動作']}");
+        if(r.containsKey('comment_セーリング')) promptBuffer.writeln("- 【セーリングメモ】: ${r['comment_セーリング']}");
+        if(r.containsKey('comment_スタート')) promptBuffer.writeln("- 【スタートメモ】: ${r['comment_スタート']}");
+        if(r.containsKey('comment_コース')) promptBuffer.writeln("- 【コースメモ】: ${r['comment_コース']}");
+
+        final scores = r['scores'] as Map<String, dynamic>? ?? {};
+        if (scores.isNotEmpty) {
+          promptBuffer.write("- 【自己評価スコア】: ");
+          List<String> scoreStrings = [];
+          scores.forEach((key, value) {
+            if (value is int && value > 0) {
+              scoreStrings.add("$key($value)");
+            }
+          });
+          promptBuffer.writeln(scoreStrings.join(', '));
+        }
+        promptBuffer.writeln(""); 
       }
       
       promptBuffer.writeln("---");
-      promptBuffer.writeln("出力はMarkdown形式で見やすく整理してください。");
+      promptBuffer.writeln("出力はMarkdown形式で見やすく整理し、300文字〜500文字程度で簡潔にまとめてください。");
 
-      final model = GenerativeModel(model: 'gemini-3-flash-preview', apiKey: _apiKey);
+      setState(() => _loadingMessage = 'Step 3/3: AIが分析中...');
+
+      // ★修正: maxOutputTokensを4000に増加
+      final model = GenerativeModel(
+        model: 'gemini-3-flash-preview', 
+        apiKey: _apiKey,
+        generationConfig: GenerationConfig(
+          maxOutputTokens: 4000, // ここを800から4000に変更
+          temperature: 0.7,
+        ),
+      );
+      
       final response = await model.generateContent([Content.text(promptBuffer.toString())]);
+
       final responseText = response.text ?? 'AIからの応答が空でした。';
 
       await _saveResult(responseText);
@@ -235,34 +263,44 @@ class _HomePageState extends State<HomePage> {
       }
     } catch (e) {
       if (mounted) {
+        String errorMsg = e.toString();
+        String? url;
+        
+        if (errorMsg.contains('https://console.firebase.google.com')) {
+          final RegExp regExp = RegExp(r'(https://console\.firebase\.google\.com[^\s]+)');
+          final match = regExp.firstMatch(errorMsg);
+          if (match != null) {
+            url = match.group(0);
+            errorMsg = "【重要】データベースの設定が必要です。\n下のボタンを押してインデックスを作成してください。";
+          }
+        } else if (errorMsg.contains('permission-denied')) {
+          errorMsg = "権限エラーです。\nセキュリティルールを確認してください。";
+        } else if (errorMsg.contains('503')) {
+          errorMsg = "現在、AIサーバーが大変混雑しています(503)。\n1〜2分待ってから再度お試しください。";
+        } else if (errorMsg.contains('404') || errorMsg.contains('not found')) {
+           errorMsg = "指定したモデルが見つかりません(404)。\nモデル名が有効か確認してください。";
+        }
+
         setState(() {
           _isLoading = false;
-          _resultText = 'エラーが発生しました。\n\n詳細: $e';
+          _resultText = 'エラーが発生しました:\n$errorMsg';
+          _errorUrl = url;
         });
       }
     }
   }
 
-  // --- グラフデータ取得（動的対応） ---
+  // --- グラフデータ取得 ---
   Future<Map<String, List<double>>> _fetchChartData() async {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return {};
-    if (_myTeamId == null) return {};
+    if (user == null || _myTeamId == null) return {};
 
     try {
-      // 1. 最新のチェックリスト設定を取得
       Map<String, List<String>> currentRadarMap = {};
-      
-      final checklistDoc = await FirebaseFirestore.instance
-          .collection('teams')
-          .doc(_myTeamId)
-          .collection('settings')
-          .doc('checklist')
-          .get();
+      final checklistDoc = await FirebaseFirestore.instance.collection('teams').doc(_myTeamId).collection('settings').doc('checklist').get();
 
       if (checklistDoc.exists && checklistDoc.data() != null) {
         final data = checklistDoc.data()!;
-        
         currentRadarMap['動作'] = List<String>.from(data['動作']?['動作'] ?? []);
         currentRadarMap['セール\nトリム'] = List<String>.from(data['セーリング']?['セールトリム'] ?? []);
         currentRadarMap['ヒール\nトリム'] = List<String>.from(data['セーリング']?['バランス'] ?? []);
@@ -277,12 +315,10 @@ class _HomePageState extends State<HomePage> {
         final courseMap = data['コース'] as Map<String, dynamic>? ?? {};
         courseMap.forEach((_, v) => courseItems.addAll(List<String>.from(v)));
         currentRadarMap['コース'] = courseItems;
-
       } else {
         return {};
       }
 
-      // 2. 直近のレポートを取得
       final now = DateTime.now();
       final pastMonth = now.subtract(const Duration(days: 60));
       final DateFormat formatter = DateFormat('yyyy-MM-dd');
@@ -294,11 +330,7 @@ class _HomePageState extends State<HomePage> {
           .where('date', isGreaterThanOrEqualTo: formatter.format(pastMonth))
           .get();
 
-      // 3. 集計処理
-      Map<String, Map<String, List<int>>> aggregated = {
-        'light': {}, 'medium': {}, 'heavy': {},
-      };
-
+      Map<String, Map<String, List<int>>> aggregated = {'light': {}, 'medium': {}, 'heavy': {}};
       for (var wind in ['light', 'medium', 'heavy']) {
         for (var axis in _radarAxisTitles) {
           aggregated[wind]![axis] = [0, 0];
@@ -309,19 +341,18 @@ class _HomePageState extends State<HomePage> {
         final data = doc.data();
         final scores = data['scores'] as Map<String, dynamic>? ?? {};
         
+        if (data['windSpeedMin'] == null || data['windSpeedMax'] == null) continue; 
+
         double avgWind = 0.0;
         try {
-          double min = double.tryParse(data['windSpeedMin']?.toString() ?? '0') ?? 0;
-          double max = double.tryParse(data['windSpeedMax']?.toString() ?? '0') ?? 0;
+          double min = double.tryParse(data['windSpeedMin'].toString()) ?? 0;
+          double max = double.tryParse(data['windSpeedMax'].toString()) ?? 0;
           avgWind = (min + max) / 2;
-        } catch (_) {}
+        } catch (_) { continue; }
 
         String windKey = 'light';
-        if (avgWind >= 7.0) {
-          windKey = 'heavy';
-        } else if (avgWind >= 4.0) {
-          windKey = 'medium';
-        }
+        if (avgWind >= 7.0) windKey = 'heavy';
+        else if (avgWind >= 4.0) windKey = 'medium';
 
         currentRadarMap.forEach((axisName, items) {
           for (var item in items) {
@@ -343,9 +374,7 @@ class _HomePageState extends State<HomePage> {
         }
         result[wind] = averages;
       }
-
       return result;
-
     } catch (e) {
       debugPrint("★★★ グラフデータの取得エラー: $e");
       return {};
@@ -390,7 +419,6 @@ class _HomePageState extends State<HomePage> {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const SizedBox(height: 300, child: Center(child: CircularProgressIndicator()));
         }
-
         if (!snapshot.hasData || snapshot.data!.isEmpty) {
           return Container(
             height: 150,
@@ -400,7 +428,6 @@ class _HomePageState extends State<HomePage> {
             child: const Text('データがありません。\n日誌を投稿するとグラフが表示されます。', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
           );
         }
-
         final data = snapshot.data!;
         
         return Container(
@@ -421,7 +448,6 @@ class _HomePageState extends State<HomePage> {
                 ],
               ),
               const SizedBox(height: 12),
-              
               const Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -433,14 +459,12 @@ class _HomePageState extends State<HomePage> {
                 ],
               ),
               const SizedBox(height: 20),
-
               SizedBox(
                 height: 300,
                 child: RadarChart(
                   RadarChartData(
                     radarTouchData: RadarTouchData(enabled: false),
                     dataSets: [
-                      // ★透明なデータセット（最大値3.0固定用）
                       RadarDataSet(
                         dataEntries: _radarAxisTitles.map((_) => const RadarEntry(value: 3.0)).toList(),
                         borderColor: Colors.transparent,
@@ -448,7 +472,6 @@ class _HomePageState extends State<HomePage> {
                         entryRadius: 0,
                         borderWidth: 0,
                       ),
-                      // 実際のデータ
                       _buildRadarDataSet(data['light']!, Colors.green),
                       _buildRadarDataSet(data['medium']!, Colors.blue),
                       _buildRadarDataSet(data['heavy']!, Colors.red),
@@ -459,9 +482,7 @@ class _HomePageState extends State<HomePage> {
                     titlePositionPercentageOffset: 0.1,
                     titleTextStyle: const TextStyle(color: Colors.black87, fontSize: 12, fontWeight: FontWeight.bold),
                     getTitle: (index, angle) {
-                      if (index < _radarAxisTitles.length) {
-                        return RadarChartTitle(text: _radarAxisTitles[index]);
-                      }
+                      if (index < _radarAxisTitles.length) return RadarChartTitle(text: _radarAxisTitles[index]);
                       return const RadarChartTitle(text: '');
                     },
                     tickCount: 3, 
@@ -483,7 +504,6 @@ class _HomePageState extends State<HomePage> {
     if (values.every((v) => v == 0)) {
        return RadarDataSet(dataEntries: _radarAxisTitles.map((_) => const RadarEntry(value: 0)).toList(), borderColor: Colors.transparent, fillColor: Colors.transparent);
     }
-
     return RadarDataSet(
       fillColor: color.withOpacity(0.15),
       borderColor: color,
@@ -572,11 +592,31 @@ class _HomePageState extends State<HomePage> {
                borderRadius: _analyzedDate.isNotEmpty ? const BorderRadius.vertical(bottom: Radius.circular(12)) : BorderRadius.circular(12),
                border: Border.all(color: Colors.grey.withOpacity(0.2)),
             ),
-            child: Markdown(
-              data: _resultText,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              padding: const EdgeInsets.all(24),
+            child: Column(
+              children: [
+                Markdown(
+                  data: _resultText,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  padding: const EdgeInsets.all(24),
+                ),
+                
+                if (_errorUrl != null)
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.link),
+                      label: const Text('設定ページを開く (インデックス作成)'),
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+                      onPressed: () async {
+                        final Uri url = Uri.parse(_errorUrl!);
+                        if (await canLaunchUrl(url)) {
+                          await launchUrl(url);
+                        }
+                      },
+                    ),
+                  ),
+              ],
             ),
           ),
           const SizedBox(height: 100),
