@@ -9,6 +9,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:url_launcher/url_launcher.dart'; // URLを開く用
 import 'gemini_config.dart';
 import 'haitei_checker_page.dart';
+import 'amedas_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -402,6 +403,7 @@ class _HomePageState extends State<HomePage> {
         child: Column(
           children: [
             _buildHaiteiCheckerBanner(),
+            _buildAmedasBanner(),
             _buildChartSection(),
             const SizedBox(height: 20),
             _buildAISection(),
@@ -449,6 +451,48 @@ class _HomePageState extends State<HomePage> {
                           style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold)),
                       SizedBox(height: 2),
                       Text('出艇前に配艇が安全マニュアルの基準を満たすかチェック',
+                          style: TextStyle(color: Colors.white70, fontSize: 12)),
+                    ],
+                  ),
+                ),
+                Icon(Icons.chevron_right, color: Colors.white),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // アメダス風況モニターへの入口バナー
+  Widget _buildAmedasBanner() {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      child: Material(
+        color: Colors.indigo.shade400,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const AmedasPage()),
+            );
+          },
+          child: const Padding(
+            padding: EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Icon(Icons.air, color: Colors.white, size: 36),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('アメダス風況モニター',
+                          style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold)),
+                      SizedBox(height: 2),
+                      Text('風向に応じた観測地点の10分毎データを地図から確認',
                           style: TextStyle(color: Colors.white70, fontSize: 12)),
                     ],
                   ),
