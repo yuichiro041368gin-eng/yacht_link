@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // クリップボード用
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
@@ -8,6 +7,8 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:url_launcher/url_launcher.dart'; // URLを開く用
+import 'gemini_config.dart';
+import 'haitei_checker_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -17,12 +18,8 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  // ★★★ APIキー ★★★
-  final String _apiKey = 'AIzaSyBWBmcMMbxmrNvl1n_dYnRKXCpV2tJ7SME';
-
   String _resultText = '';
   String _analyzedDate = '';
-  String _analyzedBy = '';
   bool _isLoading = false;
   bool _hasAnalyzed = false;
   
@@ -72,7 +69,6 @@ class _HomePageState extends State<HomePage> {
 
     setState(() {
       _analyzedDate = DateFormat('yyyy/MM/dd HH:mm').format(DateTime.now());
-      _analyzedBy = userName;
     });
   }
 
@@ -124,7 +120,6 @@ class _HomePageState extends State<HomePage> {
                           setState(() {
                             _resultText = contentStr;
                             _analyzedDate = dateStr;
-                            _analyzedBy = '自分';
                             _hasAnalyzed = true;
                           });
                           Navigator.pop(context);
@@ -166,6 +161,15 @@ class _HomePageState extends State<HomePage> {
     
     if (_myTeamId == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('チーム情報を読み込み中です。少々お待ちください。')));
+      return;
+    }
+
+    if (!GeminiConfig.hasApiKey) {
+      setState(() {
+        _hasAnalyzed = true;
+        _resultText = 'Gemini APIキーが設定されていません。\n'
+            '起動時に --dart-define=GEMINI_API_KEY=... を指定してください。';
+      });
       return;
     }
 
@@ -242,7 +246,7 @@ class _HomePageState extends State<HomePage> {
       // ★修正: maxOutputTokensを4000に増加
       final model = GenerativeModel(
         model: 'gemini-3-flash-preview', 
-        apiKey: _apiKey,
+        apiKey: GeminiConfig.apiKey,
         generationConfig: GenerationConfig(
           maxOutputTokens: 4000, // ここを800から4000に変更
           temperature: 0.7,
@@ -353,7 +357,9 @@ class _HomePageState extends State<HomePage> {
         String windKey = 'light';
         if (avgWind >= 7.0) {
           windKey = 'heavy';
-        } else if (avgWind >= 4.0) windKey = 'medium';
+        } else if (avgWind >= 4.0) {
+          windKey = 'medium';
+        }
 
         currentRadarMap.forEach((axisName, items) {
           for (var item in items) {
@@ -395,6 +401,7 @@ class _HomePageState extends State<HomePage> {
       body: SingleChildScrollView(
         child: Column(
           children: [
+            _buildHaiteiCheckerBanner(),
             _buildChartSection(),
             const SizedBox(height: 20),
             _buildAISection(),
@@ -410,6 +417,48 @@ class _HomePageState extends State<HomePage> {
               foregroundColor: Colors.white,
             )
           : null,
+    );
+  }
+
+  // 配艇チェッカーへの入口バナー
+  Widget _buildHaiteiCheckerBanner() {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      child: Material(
+        color: Colors.teal.shade600,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const HaiteiCheckerPage()),
+            );
+          },
+          child: const Padding(
+            padding: EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Icon(Icons.fact_check, color: Colors.white, size: 36),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('配艇チェッカー',
+                          style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold)),
+                      SizedBox(height: 2),
+                      Text('出艇前に配艇が安全マニュアルの基準を満たすかチェック',
+                          style: TextStyle(color: Colors.white70, fontSize: 12)),
+                    ],
+                  ),
+                ),
+                Icon(Icons.chevron_right, color: Colors.white),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -437,7 +486,7 @@ class _HomePageState extends State<HomePage> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
-            boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 4))],
+            boxShadow: [BoxShadow(color: Colors.grey.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 4))],
           ),
           child: Column(
             children: [
@@ -506,7 +555,7 @@ class _HomePageState extends State<HomePage> {
        return RadarDataSet(dataEntries: _radarAxisTitles.map((_) => const RadarEntry(value: 0)).toList(), borderColor: Colors.transparent, fillColor: Colors.transparent);
     }
     return RadarDataSet(
-      fillColor: color.withOpacity(0.15),
+      fillColor: color.withValues(alpha: 0.15),
       borderColor: color,
       entryRadius: 2.5,
       borderWidth: 2,
@@ -522,7 +571,7 @@ class _HomePageState extends State<HomePage> {
         decoration: BoxDecoration(
           color: Colors.indigo.shade50,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.indigo.withOpacity(0.2)),
+          border: Border.all(color: Colors.indigo.withValues(alpha: 0.2)),
         ),
         child: Column(
           children: [
@@ -591,7 +640,7 @@ class _HomePageState extends State<HomePage> {
             decoration: BoxDecoration(
                color: Colors.white,
                borderRadius: _analyzedDate.isNotEmpty ? const BorderRadius.vertical(bottom: Radius.circular(12)) : BorderRadius.circular(12),
-               border: Border.all(color: Colors.grey.withOpacity(0.2)),
+               border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
             ),
             child: Column(
               children: [

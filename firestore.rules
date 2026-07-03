@@ -1,0 +1,74 @@
+rules_version = '2';
+
+// YachtLink Firestoreセキュリティルール
+//
+// 配艇チェッカーの「結果を記録」で保存エラー（permission-denied）が出る場合は、
+// haitei_plans コレクションへの書き込みが許可されていないことが原因です。
+// このファイルを Firebase コンソール（Firestore Database > ルール）に貼り付けるか、
+// `firebase deploy --only firestore:rules` で反映してください。
+//
+// 注意: デプロイするとコンソール上の既存ルールは置き換えられます。
+// 既にカスタマイズしたルールがある場合は、内容を確認してからマージしてください。
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // 管理者（users/{uid}.role == 'admin'）かどうか
+    function isAdmin() {
+      return signedIn()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // ユーザープロフィール
+    // - 読み取り: ログイン済みなら可（名簿・配艇チェッカーで使用）
+    // - 作成/更新/削除: 本人、または管理者（管理者によるプロフィール編集・承認）
+    match /users/{userId} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.auth.uid == userId;
+      allow update, delete: if signedIn()
+        && (request.auth.uid == userId || isAdmin());
+    }
+
+    // チーム情報（teams/{teamId} とその配下: settings/checklist など）
+    match /teams/{teamId}/{document=**} {
+      allow read, write: if signedIn();
+    }
+    match /teams/{teamId} {
+      allow read, write: if signedIn();
+    }
+
+    // 練習日誌
+    match /practice_reports/{docId} {
+      allow read, write: if signedIn();
+    }
+
+    // AI分析履歴
+    match /team_analysis_logs/{docId} {
+      allow read, write: if signedIn();
+    }
+
+    // 動画分析履歴
+    match /video_analysis_logs/{docId} {
+      allow read, write: if signedIn();
+    }
+
+    // 機材・備品
+    match /equipment/{docId} {
+      allow read, write: if signedIn();
+    }
+
+    // 機材カテゴリ
+    match /categories/{docId} {
+      allow read, write: if signedIn();
+    }
+
+    // 配艇チェッカーの記録
+    match /haitei_plans/{docId} {
+      allow read, write: if signedIn();
+    }
+  }
+}

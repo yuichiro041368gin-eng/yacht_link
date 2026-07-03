@@ -2,6 +2,14 @@
 
 A new Flutter project.
 
+## Gemini API key
+
+Do not commit a Gemini API key into the repository. Pass it at build or run time:
+
+```sh
+flutter run --dart-define=GEMINI_API_KEY=your_api_key
+```
+
 ## Getting Started
 
 This project is a starting point for a Flutter application.

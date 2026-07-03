@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:ui'; // すりガラス効果用
 
@@ -50,7 +51,9 @@ class _AuthPageState extends State<AuthPage> {
     });
 
     try {
-      await FirebaseAuth.instance.setPersistence(Persistence.LOCAL);
+      if (kIsWeb) {
+        await FirebaseAuth.instance.setPersistence(Persistence.LOCAL);
+      }
 
       if (_isLogin) {
         await FirebaseAuth.instance.signInWithEmailAndPassword(
@@ -106,9 +109,14 @@ class _AuthPageState extends State<AuthPage> {
         children: [
           Container(
             decoration: const BoxDecoration(
-              image: DecorationImage(
-                image: AssetImage('assets/images/login_bg.jpg'),
-                fit: BoxFit.cover,
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Color(0xFFE8EEF8),
+                  Color(0xFFBFD7EA),
+                  Color(0xFFF4F7FB),
+                ],
               ),
             ),
           ),
@@ -122,14 +130,14 @@ class _AuthPageState extends State<AuthPage> {
                     width: 350,
                     padding: const EdgeInsets.all(30),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.7),
+                      color: Colors.white.withValues(alpha: 0.7),
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Colors.white.withOpacity(0.5)),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.5)),
                     ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.sailing, size: 60, color: Colors.indigo),
+                        Image.asset('assets/images/logo.png', width: 76, height: 76),
                         const SizedBox(height: 10),
                         const Text(
                           'YachtLink',

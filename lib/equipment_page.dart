@@ -166,8 +166,10 @@ class _EquipmentPageState extends State<EquipmentPage> {
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis),
         subtitle: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           if (detail.isNotEmpty) Text(detail, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.black87)),
-          // ★追加: レスキューの場合、給油日を表示
-          if (category == 'レスキュー' && lastRefueled.isNotEmpty) 
+          // ★追加: レスキューの場合、種別・定員・給油日を表示
+          if (category == 'レスキュー')
+            Text('${data['rescueType'] ?? '種別未設定'} / 定員: ${data['capacity']?.toString() ?? '未設定'}人', style: const TextStyle(color: Colors.teal, fontWeight: FontWeight.bold, fontSize: 11)),
+          if (category == 'レスキュー' && lastRefueled.isNotEmpty)
             Text('最終給油: $lastRefueled', style: const TextStyle(color: Colors.indigo, fontWeight: FontWeight.bold, fontSize: 11)),
           
           Text(isQuantityMode ? '最終更新: $user' : '報告: $user', style: const TextStyle(fontSize: 10, color: Colors.grey)),
@@ -188,6 +190,9 @@ class _EquipmentPageState extends State<EquipmentPage> {
     String selectedType = data?['type'] ?? '470';
     String status = data?['status'] ?? '使用可';
     int quantity = data?['quantity'] ?? 1;
+    // ★追加: レスキュー艇の種別・定員（配艇チェッカーで使用）
+    String rescueType = data?['rescueType'] ?? 'ゴムボート';
+    final capacityController = TextEditingController(text: data?['capacity']?.toString() ?? '');
 
     final nameController = TextEditingController(text: data?['name']);
     final detailController = TextEditingController(text: data?['detail']);
@@ -248,8 +253,24 @@ class _EquipmentPageState extends State<EquipmentPage> {
                   
                   const SizedBox(height: 20),
 
-                  // ★追加: レスキューの場合のみ給油日入力欄を表示
+                  // ★追加: レスキューの場合のみ種別・定員・給油日入力欄を表示
                   if (selectedCategory == 'レスキュー') ...[
+                    const Text('レスキュー艇の種別', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                    Row(children: [
+                      Expanded(child: RadioListTile(title: const Text('ゴムボート', style: TextStyle(fontSize: 13)), value: 'ゴムボート', groupValue: rescueType, onChanged: (v) => setState(() => rescueType = v!))),
+                      Expanded(child: RadioListTile(title: const Text('ハードボート', style: TextStyle(fontSize: 13)), value: 'ハードボート', groupValue: rescueType, onChanged: (v) => setState(() => rescueType = v!))),
+                    ]),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: capacityController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: '定員（人）',
+                        helperText: '配艇チェッカーの定員チェックに使用します',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
                     TextField(
                       controller: refuelingDateController,
                       readOnly: true, // キーボードを出さない
@@ -323,8 +344,10 @@ class _EquipmentPageState extends State<EquipmentPage> {
                           'status': (selectedCategory == '部品・工具') ? '在庫あり' : status, 
                           'isAvailable': status == '使用可',
                           'userName': userName,
-                          // ★追加: レスキューの場合のみ日付を保存
+                          // ★追加: レスキューの場合のみ日付・種別・定員を保存
                           'lastRefueled': (selectedCategory == 'レスキュー') ? refuelingDateController.text : null,
+                          'rescueType': (selectedCategory == 'レスキュー') ? rescueType : null,
+                          'capacity': (selectedCategory == 'レスキュー') ? int.tryParse(capacityController.text) : null,
                           'createdAt': data?['createdAt'] ?? FieldValue.serverTimestamp(),
                           'updatedAt': FieldValue.serverTimestamp(),
                         };

@@ -19,7 +19,10 @@ class _SettingsPageState extends State<SettingsPage> {
 
   String _position = 'スキッパー';
   String _grade = '1年';
-  String _yachtClass = '470'; 
+  String _yachtClass = '470';
+  String _sailingCert = '未設定'; // 部内帆走資格（配艇チェッカーで使用）
+  bool _hasBoatLicense = false; // 小型船舶操縦免許
+  String _gender = '未設定'; // レスキュー乗員の男女比チェックで使用（任意）
   bool _isLoading = true;
   bool _isAdmin = false;
   
@@ -58,6 +61,9 @@ class _SettingsPageState extends State<SettingsPage> {
         _position = data?['position'] ?? prefs.getString('position') ?? 'スキッパー';
         _grade = data?['grade'] ?? prefs.getString('grade') ?? '1年';
         _yachtClass = data?['class'] ?? prefs.getString('class') ?? '470';
+        _sailingCert = data?['sailingCert'] ?? '未設定';
+        _hasBoatLicense = data?['hasBoatLicense'] == true;
+        _gender = data?['gender'] ?? '未設定';
         _isAdmin = (data?['role'] == 'admin');
         
         // ★修正: 固定IDへの強制書き換えを削除し、現在のチームIDを保持
@@ -118,6 +124,9 @@ class _SettingsPageState extends State<SettingsPage> {
         'teamRole': combinedRoles,
         'teamId': _currentTeamId, // ★修正: 保持していたIDを使用
         'teamName': _teamNameController.text,
+        'sailingCert': _sailingCert,
+        'hasBoatLicense': _hasBoatLicense,
+        'gender': _gender,
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
 
@@ -238,6 +247,41 @@ class _SettingsPageState extends State<SettingsPage> {
             DropdownButtonFormField<String>(initialValue: _yachtClass, decoration: const InputDecoration(labelText: 'クラス (艇種)', border: OutlineInputBorder()), items: ['470', 'Snipe', '両方', 'その他'].map((label) => DropdownMenuItem(value: label, child: Text(label))).toList(), onChanged: (val) => setState(() => _yachtClass = val!)),
             const SizedBox(height: 20),
             DropdownButtonFormField<String>(initialValue: _position, decoration: const InputDecoration(labelText: 'ポジション', border: OutlineInputBorder()), items: ['スキッパー', 'クルー', '両方', 'マネージャー', 'サポーター'].map((label) => DropdownMenuItem(value: label, child: Text(label))).toList(), onChanged: (val) => setState(() => _position = val!)),
+            const SizedBox(height: 20),
+
+            // ★配艇チェッカー用のプロフィール項目
+            DropdownButtonFormField<String>(
+              initialValue: _sailingCert,
+              decoration: const InputDecoration(
+                labelText: '部内帆走資格',
+                helperText: 'スキッパーは必ず設定してください（配艇チェッカーの出艇可否判定に使用）',
+                helperMaxLines: 2,
+                border: OutlineInputBorder(),
+              ),
+              items: ['未設定', '無資格', '初級', '中級', '上級'].map((label) => DropdownMenuItem(value: label, child: Text(label))).toList(),
+              onChanged: (val) => setState(() => _sailingCert = val!),
+            ),
+            const SizedBox(height: 20),
+            DropdownButtonFormField<String>(
+              initialValue: _gender,
+              decoration: const InputDecoration(
+                labelText: '性別（任意）',
+                helperText: 'レスキュー乗員の男女比チェック（安全マニュアルⅠ-6）に使用',
+                helperMaxLines: 2,
+                border: OutlineInputBorder(),
+              ),
+              items: ['未設定', '男性', '女性'].map((label) => DropdownMenuItem(value: label, child: Text(label))).toList(),
+              onChanged: (val) => setState(() => _gender = val!),
+            ),
+            const SizedBox(height: 12),
+            SwitchListTile(
+              title: const Text('小型船舶操縦免許を保有'),
+              subtitle: const Text('レスキュー艇の運転者チェックに使用', style: TextStyle(fontSize: 12)),
+              value: _hasBoatLicense,
+              activeThumbColor: Colors.indigo,
+              contentPadding: EdgeInsets.zero,
+              onChanged: (val) => setState(() => _hasBoatLicense = val),
+            ),
             const SizedBox(height: 40),
 
             SizedBox(width: double.infinity, height: 50, child: ElevatedButton.icon(onPressed: _saveProfile, icon: const Icon(Icons.cloud_upload), label: const Text('保存して公開'), style: ElevatedButton.styleFrom(backgroundColor: Colors.indigo, foregroundColor: Colors.white))),

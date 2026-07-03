@@ -7,6 +7,10 @@ import 'package:intl/intl.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'gemini_config.dart';
+import 'video_controller_factory_stub.dart'
+    if (dart.library.io) 'video_controller_factory_io.dart'
+    if (dart.library.html) 'video_controller_factory_web.dart';
 
 class VideoPage extends StatefulWidget {
   const VideoPage({super.key});
@@ -16,9 +20,6 @@ class VideoPage extends StatefulWidget {
 }
 
 class _VideoPageState extends State<VideoPage> {
-  // ★★★ APIキー ★★★
-  final String _apiKey = 'AIzaSyBWBmcMMbxmrNvl1n_dYnRKXCpV2tJ7SME';
-
   XFile? _videoFile;
   VideoPlayerController? _videoController;
   
@@ -199,7 +200,7 @@ class _VideoPageState extends State<VideoPage> {
 
     if (pickedFile != null) {
       await _videoController?.dispose();
-      final controller = VideoPlayerController.networkUrl(Uri.parse(pickedFile.path));
+      final controller = createVideoController(pickedFile.path);
       await controller.initialize();
 
       setState(() {
@@ -217,6 +218,14 @@ class _VideoPageState extends State<VideoPage> {
     
     if (_myTeamId == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('チーム情報を読み込んでいます...')));
+      return;
+    }
+
+    if (!GeminiConfig.hasApiKey) {
+      setState(() {
+        _resultText = 'Gemini APIキーが設定されていません。\n'
+            '起動時に --dart-define=GEMINI_API_KEY=... を指定してください。';
+      });
       return;
     }
 
@@ -244,7 +253,7 @@ class _VideoPageState extends State<VideoPage> {
 
     try {
       final videoBytes = await _videoFile!.readAsBytes();
-      final model = GenerativeModel(model: 'gemini-3-flash-preview', apiKey: _apiKey);
+      final model = GenerativeModel(model: 'gemini-3-flash-preview', apiKey: GeminiConfig.apiKey);
       
       // ★修正: ユーザー入力をプロンプトに組み込む
       String userInstruction = _promptController.text.trim();
@@ -445,7 +454,7 @@ class _VideoPageState extends State<VideoPage> {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)),
-                  border: Border.all(color: Colors.grey.withOpacity(0.2)),
+                  border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
                 ),
                 child: Markdown(
                   data: _resultText,

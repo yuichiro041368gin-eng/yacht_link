@@ -55,6 +55,10 @@ class MemberListPage extends StatelessWidget {
                   final role = data['role'] ?? 'member';
                   final photoUrl = data['photoUrl'];
                   final yachtClass = data['class'] ?? '-';
+                  final sailingCert = data['sailingCert'] as String?;
+                  final hasBoatLicense = data['hasBoatLicense'] == true;
+                  final certInfo = (sailingCert != null && sailingCert != '未設定') ? ' / 帆走:$sailingCert' : '';
+                  final licenseInfo = hasBoatLicense ? ' / 船舶免許' : '';
 
                   return Card(
                     margin: const EdgeInsets.only(bottom: 12),
@@ -96,7 +100,7 @@ class MemberListPage extends StatelessWidget {
                           ],
                         ],
                       ),
-                      subtitle: Text('$grade / $yachtClass / $position'),
+                      subtitle: Text('$grade / $yachtClass / $position$certInfo$licenseInfo'),
                       trailing: const Icon(Icons.chevron_right, color: Colors.grey),
                     ),
                   );
@@ -123,12 +127,31 @@ class MemberDetailPage extends StatefulWidget {
 
 class _MemberDetailPageState extends State<MemberDetailPage> {
   bool _isViewerAdmin = false;
+  // 管理者編集の結果を画面に反映できるようローカルに保持
+  late Map<String, dynamic> _userData;
   final List<String> _radarAxisTitles = ['動作', 'セール\nトリム', 'ヒール\nトリム', 'VMG', 'スタート', 'コース'];
 
   @override
   void initState() {
     super.initState();
+    _userData = Map<String, dynamic>.from(widget.userData);
     _checkViewerRole();
+  }
+
+  // 管理者によるプロフィール編集ページを開く
+  Future<void> _openEditPage() async {
+    final updated = await Navigator.push<Map<String, dynamic>>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => MemberEditPage(userId: widget.userId, userData: _userData),
+      ),
+    );
+    if (updated != null && mounted) {
+      setState(() => _userData = {..._userData, ...updated});
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('プロフィールを更新しました')),
+      );
+    }
   }
 
   // 自分（閲覧者）が管理者かどうかチェック
@@ -146,7 +169,7 @@ class _MemberDetailPageState extends State<MemberDetailPage> {
 
   // 権限変更ダイアログ
   void _showRoleChangeDialog() {
-    String currentRole = widget.userData['role'] ?? 'member';
+    String currentRole = _userData['role'] ?? 'member';
     String newRole = currentRole;
 
     showDialog(
@@ -216,7 +239,7 @@ class _MemberDetailPageState extends State<MemberDetailPage> {
       final pastMonth = now.subtract(const Duration(days: 60));
       final DateFormat formatter = DateFormat('yyyy-MM-dd');
 
-      final String? targetTeamId = widget.userData['teamId'];
+      final String? targetTeamId = _userData['teamId'];
       if (targetTeamId == null) return {};
 
       // 1. 最新のチェックリスト設定を取得 (home_page.dartと同様)
@@ -308,12 +331,12 @@ class _MemberDetailPageState extends State<MemberDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    final photoUrl = widget.userData['photoUrl'];
-    final name = widget.userData['name'] ?? '未設定';
-    final teamRole = widget.userData['teamRole'] ?? 'なし';
-    final grade = widget.userData['grade'] ?? '-';
-    final position = widget.userData['position'] ?? '-';
-    final yachtClass = widget.userData['class'] ?? '-';
+    final photoUrl = _userData['photoUrl'];
+    final name = _userData['name'] ?? '未設定';
+    final teamRole = _userData['teamRole'] ?? 'なし';
+    final grade = _userData['grade'] ?? '-';
+    final position = _userData['position'] ?? '-';
+    final yachtClass = _userData['class'] ?? '-';
 
     final currentUser = FirebaseAuth.instance.currentUser;
 
@@ -323,6 +346,12 @@ class _MemberDetailPageState extends State<MemberDetailPage> {
         backgroundColor: Colors.indigo,
         foregroundColor: Colors.white,
         actions: [
+          if (_isViewerAdmin)
+            IconButton(
+              icon: const Icon(Icons.edit),
+              tooltip: 'プロフィールを編集（管理者）',
+              onPressed: _openEditPage,
+            ),
           if (_isViewerAdmin && currentUser?.uid != widget.userId)
             IconButton(
               icon: const Icon(Icons.admin_panel_settings),
@@ -346,7 +375,7 @@ class _MemberDetailPageState extends State<MemberDetailPage> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(name, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-                if (widget.userData['role'] == 'admin') ...[
+                if (_userData['role'] == 'admin') ...[
                   const SizedBox(width: 8),
                   const Chip(
                     label: Text('Admin', style: TextStyle(color: Colors.white, fontSize: 10)),
@@ -359,7 +388,27 @@ class _MemberDetailPageState extends State<MemberDetailPage> {
             ),
             const SizedBox(height: 8),
             Text('$grade / $yachtClass / $position', style: const TextStyle(fontSize: 16, color: Colors.grey)),
-            const SizedBox(height: 16),
+            const SizedBox(height: 8),
+            // 帆走資格・船舶免許（配艇チェッカーで使用する安全情報）
+            Wrap(
+              spacing: 8,
+              alignment: WrapAlignment.center,
+              children: [
+                if (_userData['sailingCert'] != null && _userData['sailingCert'] != '未設定')
+                  Chip(
+                    avatar: const Icon(Icons.sailing, size: 16, color: Colors.indigo),
+                    label: Text('帆走資格: ${_userData['sailingCert']}', style: const TextStyle(fontSize: 12)),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                if (_userData['hasBoatLicense'] == true)
+                  const Chip(
+                    avatar: Icon(Icons.badge, size: 16, color: Colors.teal),
+                    label: Text('小型船舶免許', style: TextStyle(fontSize: 12)),
+                    visualDensity: VisualDensity.compact,
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
             if (teamRole != 'なし')
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -461,6 +510,210 @@ class _MemberDetailPageState extends State<MemberDetailPage> {
       entryRadius: 2.5,
       borderWidth: 2,
       dataEntries: values.map((e) => RadarEntry(value: e)).toList(),
+    );
+  }
+}
+
+// --- 管理者用: メンバープロフィール編集ページ ---
+class MemberEditPage extends StatefulWidget {
+  final String userId;
+  final Map<String, dynamic> userData;
+
+  const MemberEditPage({super.key, required this.userId, required this.userData});
+
+  @override
+  State<MemberEditPage> createState() => _MemberEditPageState();
+}
+
+class _MemberEditPageState extends State<MemberEditPage> {
+  late final TextEditingController _nameController;
+  late final TextEditingController _teamRoleController;
+  late String _grade;
+  late String _yachtClass;
+  late String _position;
+  late String _sailingCert;
+  late String _gender;
+  late bool _hasBoatLicense;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final data = widget.userData;
+    _nameController = TextEditingController(text: data['name'] ?? '');
+    _teamRoleController = TextEditingController(text: data['teamRole'] ?? '');
+    _grade = data['grade'] ?? '1年';
+    _yachtClass = data['class'] ?? '470';
+    _position = data['position'] ?? 'スキッパー';
+    _sailingCert = data['sailingCert'] ?? '未設定';
+    _gender = data['gender'] ?? '未設定';
+    _hasBoatLicense = data['hasBoatLicense'] == true;
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _teamRoleController.dispose();
+    super.dispose();
+  }
+
+  // 既存データがリストにない値でもDropdownが壊れないように補完する
+  List<String> _withCurrent(List<String> items, String current) =>
+      items.contains(current) ? items : [current, ...items];
+
+  Future<void> _save() async {
+    if (_nameController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('名前を入力してください')));
+      return;
+    }
+    setState(() => _saving = true);
+    try {
+      final updates = <String, dynamic>{
+        'name': _nameController.text.trim(),
+        'grade': _grade,
+        'class': _yachtClass,
+        'position': _position,
+        'teamRole': _teamRoleController.text.trim(),
+        'sailingCert': _sailingCert,
+        'gender': _gender,
+        'hasBoatLicense': _hasBoatLicense,
+      };
+      await FirebaseFirestore.instance.collection('users').doc(widget.userId).set({
+        ...updates,
+        'updatedAt': FieldValue.serverTimestamp(),
+        'updatedBy': FirebaseAuth.instance.currentUser?.uid, // 誰が編集したかの記録
+      }, SetOptions(merge: true));
+
+      if (mounted) Navigator.pop(context, updates);
+    } catch (e) {
+      if (mounted) {
+        setState(() => _saving = false);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('保存エラー: $e')));
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('${widget.userData['name'] ?? 'メンバー'} さんを編集'),
+        backgroundColor: Colors.indigo,
+        foregroundColor: Colors.white,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.amber.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.amber),
+              ),
+              child: const Text(
+                '管理者としてこのメンバーのプロフィールを編集しています。帆走資格・船舶免許は配艇チェッカーの判定に使用されます。',
+                style: TextStyle(fontSize: 12, color: Colors.brown),
+              ),
+            ),
+            const SizedBox(height: 20),
+            TextField(
+              controller: _nameController,
+              decoration: const InputDecoration(labelText: '名前', border: OutlineInputBorder()),
+            ),
+            const SizedBox(height: 20),
+            TextField(
+              controller: _teamRoleController,
+              decoration: const InputDecoration(
+                labelText: '部内の役職',
+                hintText: '例: 主将 / 会計（複数は「 / 」区切り）',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 20),
+            DropdownButtonFormField<String>(
+              initialValue: _grade,
+              decoration: const InputDecoration(labelText: '学年', border: OutlineInputBorder()),
+              items: _withCurrent(['1年', '2年', '3年', '4年', '院生', 'OB/OG', 'コーチ'], _grade)
+                  .map((label) => DropdownMenuItem(value: label, child: Text(label)))
+                  .toList(),
+              onChanged: (val) => setState(() => _grade = val!),
+            ),
+            const SizedBox(height: 20),
+            DropdownButtonFormField<String>(
+              initialValue: _yachtClass,
+              decoration: const InputDecoration(labelText: 'クラス (艇種)', border: OutlineInputBorder()),
+              items: _withCurrent(['470', 'Snipe', '両方', 'その他'], _yachtClass)
+                  .map((label) => DropdownMenuItem(value: label, child: Text(label)))
+                  .toList(),
+              onChanged: (val) => setState(() => _yachtClass = val!),
+            ),
+            const SizedBox(height: 20),
+            DropdownButtonFormField<String>(
+              initialValue: _position,
+              decoration: const InputDecoration(labelText: 'ポジション', border: OutlineInputBorder()),
+              items: _withCurrent(['スキッパー', 'クルー', '両方', 'マネージャー', 'サポーター'], _position)
+                  .map((label) => DropdownMenuItem(value: label, child: Text(label)))
+                  .toList(),
+              onChanged: (val) => setState(() => _position = val!),
+            ),
+            const SizedBox(height: 20),
+            DropdownButtonFormField<String>(
+              initialValue: _sailingCert,
+              decoration: const InputDecoration(
+                labelText: '部内帆走資格',
+                helperText: '配艇チェッカーの出艇可否判定に使用',
+                border: OutlineInputBorder(),
+              ),
+              items: _withCurrent(['未設定', '無資格', '初級', '中級', '上級'], _sailingCert)
+                  .map((label) => DropdownMenuItem(value: label, child: Text(label)))
+                  .toList(),
+              onChanged: (val) => setState(() => _sailingCert = val!),
+            ),
+            const SizedBox(height: 20),
+            DropdownButtonFormField<String>(
+              initialValue: _gender,
+              decoration: const InputDecoration(
+                labelText: '性別（任意）',
+                helperText: 'レスキュー乗員の男女比チェックに使用',
+                border: OutlineInputBorder(),
+              ),
+              items: _withCurrent(['未設定', '男性', '女性'], _gender)
+                  .map((label) => DropdownMenuItem(value: label, child: Text(label)))
+                  .toList(),
+              onChanged: (val) => setState(() => _gender = val!),
+            ),
+            const SizedBox(height: 12),
+            SwitchListTile(
+              title: const Text('小型船舶操縦免許を保有'),
+              subtitle: const Text('レスキュー艇の運転者チェックに使用', style: TextStyle(fontSize: 12)),
+              value: _hasBoatLicense,
+              activeThumbColor: Colors.indigo,
+              contentPadding: EdgeInsets.zero,
+              onChanged: (val) => setState(() => _hasBoatLicense = val),
+            ),
+            const SizedBox(height: 40),
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton.icon(
+                onPressed: _saving ? null : _save,
+                icon: _saving
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : const Icon(Icons.save),
+                label: Text(_saving ? '保存中...' : '保存する'),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.indigo, foregroundColor: Colors.white),
+              ),
+            ),
+            const SizedBox(height: 40),
+          ],
+        ),
+      ),
     );
   }
 }
