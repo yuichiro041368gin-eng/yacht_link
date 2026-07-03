@@ -275,8 +275,9 @@ class _MemberDetailPageState extends State<MemberDetailPage> {
           avgWind = (min + max) / 2;
         } catch (_) {}
         String windKey = 'light';
-        if (avgWind >= 7.0) windKey = 'heavy';
-        else if (avgWind >= 4.0) windKey = 'medium';
+        if (avgWind >= 7.0) {
+          windKey = 'heavy';
+        } else if (avgWind >= 4.0) windKey = 'medium';
 
         currentRadarMap.forEach((categoryName, items) {
           for (var item in items) {

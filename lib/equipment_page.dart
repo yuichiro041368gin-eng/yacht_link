@@ -230,7 +230,7 @@ class _EquipmentPageState extends State<EquipmentPage> {
                   ),
                   const SizedBox(height: 20),
 
-                  DropdownButtonFormField<String>(value: categories.contains(selectedCategory) ? selectedCategory : categories.first, decoration: const InputDecoration(labelText: 'カテゴリ', border: OutlineInputBorder()), items: categories.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(), onChanged: (v) => setState(() => selectedCategory = v!)),
+                  DropdownButtonFormField<String>(initialValue: categories.contains(selectedCategory) ? selectedCategory : categories.first, decoration: const InputDecoration(labelText: 'カテゴリ', border: OutlineInputBorder()), items: categories.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(), onChanged: (v) => setState(() => selectedCategory = v!)),
                   const SizedBox(height: 20),
                   
                   if (selectedCategory == '艇' || selectedCategory == 'セール') ...[

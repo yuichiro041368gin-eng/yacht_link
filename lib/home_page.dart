@@ -351,8 +351,9 @@ class _HomePageState extends State<HomePage> {
         } catch (_) { continue; }
 
         String windKey = 'light';
-        if (avgWind >= 7.0) windKey = 'heavy';
-        else if (avgWind >= 4.0) windKey = 'medium';
+        if (avgWind >= 7.0) {
+          windKey = 'heavy';
+        } else if (avgWind >= 4.0) windKey = 'medium';
 
         currentRadarMap.forEach((axisName, items) {
           for (var item in items) {

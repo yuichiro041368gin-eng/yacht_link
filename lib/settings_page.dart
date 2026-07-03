@@ -233,11 +233,11 @@ class _SettingsPageState extends State<SettingsPage> {
             TextButton.icon(onPressed: _addRoleField, icon: const Icon(Icons.add), label: const Text('役職を追加')),
             
             const SizedBox(height: 20),
-            DropdownButtonFormField<String>(value: _grade, decoration: const InputDecoration(labelText: '学年', border: OutlineInputBorder()), items: ['1年', '2年', '3年', '4年', '院生', 'OB/OG', 'コーチ'].map((label) => DropdownMenuItem(value: label, child: Text(label))).toList(), onChanged: (val) => setState(() => _grade = val!)),
+            DropdownButtonFormField<String>(initialValue: _grade, decoration: const InputDecoration(labelText: '学年', border: OutlineInputBorder()), items: ['1年', '2年', '3年', '4年', '院生', 'OB/OG', 'コーチ'].map((label) => DropdownMenuItem(value: label, child: Text(label))).toList(), onChanged: (val) => setState(() => _grade = val!)),
             const SizedBox(height: 20),
-            DropdownButtonFormField<String>(value: _yachtClass, decoration: const InputDecoration(labelText: 'クラス (艇種)', border: OutlineInputBorder()), items: ['470', 'Snipe', '両方', 'その他'].map((label) => DropdownMenuItem(value: label, child: Text(label))).toList(), onChanged: (val) => setState(() => _yachtClass = val!)),
+            DropdownButtonFormField<String>(initialValue: _yachtClass, decoration: const InputDecoration(labelText: 'クラス (艇種)', border: OutlineInputBorder()), items: ['470', 'Snipe', '両方', 'その他'].map((label) => DropdownMenuItem(value: label, child: Text(label))).toList(), onChanged: (val) => setState(() => _yachtClass = val!)),
             const SizedBox(height: 20),
-            DropdownButtonFormField<String>(value: _position, decoration: const InputDecoration(labelText: 'ポジション', border: OutlineInputBorder()), items: ['スキッパー', 'クルー', '両方', 'マネージャー', 'サポーター'].map((label) => DropdownMenuItem(value: label, child: Text(label))).toList(), onChanged: (val) => setState(() => _position = val!)),
+            DropdownButtonFormField<String>(initialValue: _position, decoration: const InputDecoration(labelText: 'ポジション', border: OutlineInputBorder()), items: ['スキッパー', 'クルー', '両方', 'マネージャー', 'サポーター'].map((label) => DropdownMenuItem(value: label, child: Text(label))).toList(), onChanged: (val) => setState(() => _position = val!)),
             const SizedBox(height: 40),
 
             SizedBox(width: double.infinity, height: 50, child: ElevatedButton.icon(onPressed: _saveProfile, icon: const Icon(Icons.cloud_upload), label: const Text('保存して公開'), style: ElevatedButton.styleFrom(backgroundColor: Colors.indigo, foregroundColor: Colors.white))),

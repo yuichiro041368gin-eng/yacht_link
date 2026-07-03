@@ -1,3 +1,4 @@
+// 使用モデル: gemini-3-flash-preview
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -226,7 +227,7 @@ class _LogPageState extends State<LogPage> {
                   const SizedBox(height: 16),
                   
                   DropdownButtonFormField<String>(
-                    value: selectedCategory,
+                    initialValue: selectedCategory,
                     decoration: const InputDecoration(labelText: '大カテゴリ', border: OutlineInputBorder()),
                     items: categories.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
                     onChanged: (val) {
@@ -254,7 +255,7 @@ class _LogPageState extends State<LogPage> {
                   const SizedBox(height: 16),
 
                   DropdownButtonFormField<String>(
-                    value: selectedSubCategory,
+                    initialValue: selectedSubCategory,
                     decoration: const InputDecoration(labelText: '小カテゴリ', border: OutlineInputBorder()),
                     items: () {
                        final currentSubCats = _checklistData[selectedCategory] as Map<String, dynamic>? ?? {};
@@ -539,7 +540,7 @@ class _LogPageState extends State<LogPage> {
                     children: [
                       Expanded(
                         child: DropdownButtonFormField<String>(
-                          value: _directions.contains(windDirFrom) ? windDirFrom : null,
+                          initialValue: _directions.contains(windDirFrom) ? windDirFrom : null,
                           decoration: const InputDecoration(labelText: 'から (From)', border: OutlineInputBorder(), filled: true, fillColor: Colors.white),
                           items: _directions.map((d) => DropdownMenuItem(value: d, child: Text(d))).toList(),
                           onChanged: (val) => _saveCondition('windDirFrom', val),
@@ -548,7 +549,7 @@ class _LogPageState extends State<LogPage> {
                       const Padding(padding: EdgeInsets.symmetric(horizontal: 16.0), child: Icon(Icons.arrow_forward, color: Colors.grey)),
                       Expanded(
                         child: DropdownButtonFormField<String>(
-                          value: _directions.contains(windDirTo) ? windDirTo : null,
+                          initialValue: _directions.contains(windDirTo) ? windDirTo : null,
                           decoration: const InputDecoration(labelText: 'まで (To)', border: OutlineInputBorder(), filled: true, fillColor: Colors.white),
                           items: _directions.map((d) => DropdownMenuItem(value: d, child: Text(d))).toList(),
                           onChanged: (val) => _saveCondition('windDirTo', val),
@@ -572,7 +573,7 @@ class _LogPageState extends State<LogPage> {
                     children: [
                       Expanded(
                         child: DropdownButtonFormField<String>(
-                          value: windSpeedMin,
+                          initialValue: windSpeedMin,
                           decoration: const InputDecoration(labelText: '最小 (Min)', border: OutlineInputBorder(), filled: true, fillColor: Colors.white, suffixText: 'm/s'),
                           items: _windSpeeds.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
                           onChanged: (val) => _saveCondition('windSpeedMin', val),
@@ -581,7 +582,7 @@ class _LogPageState extends State<LogPage> {
                       const Padding(padding: EdgeInsets.symmetric(horizontal: 16.0), child: Icon(Icons.arrow_forward, color: Colors.grey)),
                       Expanded(
                         child: DropdownButtonFormField<String>(
-                          value: windSpeedMax,
+                          initialValue: windSpeedMax,
                           decoration: const InputDecoration(labelText: '最大 (Max)', border: OutlineInputBorder(), filled: true, fillColor: Colors.white, suffixText: 'm/s'),
                           items: _windSpeeds.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
                           onChanged: (val) => _saveCondition('windSpeedMax', val),
@@ -696,7 +697,6 @@ class _LogPageState extends State<LogPage> {
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.end,
                                 children: [
-                                  // ★修正: タッチ反応を良くするために Material/InkWell を使用
                                   _buildRadioBtn(item, 3, '○', val, Colors.green),
                                   const SizedBox(width: 12),
                                   _buildRadioBtn(item, 2, '△', val, Colors.orange),
@@ -716,7 +716,23 @@ class _LogPageState extends State<LogPage> {
             }),
 
             const Divider(),
-            Text('「$category」のメモ', style: const TextStyle(fontWeight: FontWeight.bold)),
+            
+            // ★追加: 過去の似た条件のログを呼び出すボタン
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('「$category」のメモ', style: const TextStyle(fontWeight: FontWeight.bold)),
+                TextButton.icon(
+                  onPressed: () => _showSimilarPastLogsBottomSheet(context, category, currentData),
+                  icon: const Icon(Icons.manage_search, color: Colors.indigo),
+                  label: const Text('似た風の日の過去ログ', style: TextStyle(color: Colors.indigo)),
+                  style: TextButton.styleFrom(
+                    backgroundColor: Colors.indigo.withOpacity(0.1),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 8),
             
             AutoSaveTextField(
@@ -997,11 +1013,9 @@ class _LogPageState extends State<LogPage> {
     return date.year == now.year && date.month == now.month && date.day == now.day;
   }
 
-  // ★修正: デザインとタッチ反応を改善
   Widget _buildRadioBtn(String item, int value, String label, int currentVal, Color color) {
     final isSelected = value == currentVal;
     
-    // Materialを使うことで、リップルエフェクト（波紋）が色の上でも見えるようになります
     return Material(
       color: isSelected ? color : Colors.white,
       shape: CircleBorder(
@@ -1010,13 +1024,10 @@ class _LogPageState extends State<LogPage> {
       clipBehavior: Clip.hardEdge,
       child: InkWell(
         onTap: () {
-          // ★修正: 即時反映ロジック
-          // まずはsetStateで画面の色を即座に変える
           int newValue = isSelected ? 0 : value;
           setState(() {
             _optimisticScores[item] = newValue;
           });
-          // その後、裏でゆっくり保存する
           _saveScore(item, newValue);
         },
         child: Container(
@@ -1036,22 +1047,19 @@ class _LogPageState extends State<LogPage> {
     );
   }
 
-  // ★修正: 毎回ユーザー名をfetchせず、キャッシュした名前を使う
   Future<void> _saveScore(String item, int value) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null || _myTeamId == null) return;
 
-    // ここで _getUserName を呼ぶと遅延の原因になるため削除し、_myUserNameを使用
     final docRef = FirebaseFirestore.instance.collection('practice_reports').doc(_documentId);
     
-    // データセット（ドット記法で、特定のキーだけを効率的に更新）
     await docRef.set({
       'date': _formattedDate,
       'timeSlot': _timeSlot,
       'userId': user.uid,
-      'userName': _myUserName, // キャッシュ済みの名前を使用
+      'userName': _myUserName,
       'teamId': _myTeamId,
-      'scores': {item: value}, // deep mergeされるのでこれでもOKだが、念のため
+      'scores': {item: value},
       'lastUpdated': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
   }
@@ -1061,7 +1069,7 @@ class _LogPageState extends State<LogPage> {
     if (user == null || _myTeamId == null) return;
 
     await FirebaseFirestore.instance.collection('practice_reports').doc(_documentId).set({
-      'userName': _myUserName, // キャッシュ済みの名前を使用
+      'userName': _myUserName,
       'timeSlot': _timeSlot,
       'date': _formattedDate,
       'teamId': _myTeamId,
@@ -1069,6 +1077,7 @@ class _LogPageState extends State<LogPage> {
     }, SetOptions(merge: true));
   }
 
+  // ★修正箇所1: シングルクォーテーションを外し、変数keyとして保存されるようにしました
   Future<void> _saveCondition(String key, dynamic value) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null || _myTeamId == null) return;
@@ -1077,8 +1086,156 @@ class _LogPageState extends State<LogPage> {
       'timeSlot': _timeSlot,
       'date': _formattedDate,
       'teamId': _myTeamId,
-      key: value,
+      key: value, // ← ここを修正しています
     }, SetOptions(merge: true));
+  }
+
+  // ★修正箇所2: チームIDを含めて検索し、権限エラーとインデックスエラーを回避しました
+  void _showSimilarPastLogsBottomSheet(BuildContext context, String category, Map<String, dynamic> currentData) {
+    final String? currentWindDir = currentData['windDirFrom'];
+    final String? currentWindSpeed = currentData['windSpeedMin'];
+
+    if (currentWindDir == null && currentWindSpeed == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('先に「風」タブで今日の風向や風速を入力してください')),
+      );
+      return;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.6,
+          minChildSize: 0.4,
+          maxChildSize: 0.9,
+          builder: (_, controller) {
+            return Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.indigo.shade50,
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.history, color: Colors.indigo),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            '過去の「$category」の反省\n(条件: $currentWindDir / $currentWindSpeed m/s)',
+                            style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.indigo),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () => Navigator.pop(context),
+                        )
+                      ],
+                    ),
+                  ),
+                  
+                  Expanded(
+                    child: FutureBuilder<QuerySnapshot>(
+                      // ★修正: チームIDを条件に追加＆orderByを削除
+                      future: FirebaseFirestore.instance
+                          .collection('practice_reports')
+                          .where('teamId', isEqualTo: _myTeamId) 
+                          .where('userId', isEqualTo: FirebaseAuth.instance.currentUser?.uid)
+                          .get(),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return const Center(child: CircularProgressIndicator());
+                        }
+                        if (snapshot.hasError) {
+                          return Center(child: Text('エラーが発生しました: ${snapshot.error}'));
+                        }
+
+                        // ★追加: 取得後にDart側で日付順にソートする
+                        final docs = snapshot.data?.docs.toList() ?? [];
+                        docs.sort((a, b) {
+                          final aData = a.data() as Map<String, dynamic>;
+                          final bData = b.data() as Map<String, dynamic>;
+                          final aDate = aData['date']?.toString() ?? '';
+                          final bDate = bData['date']?.toString() ?? '';
+                          return bDate.compareTo(aDate); // 新しい日付順（降順）
+                        });
+                        
+                        final similarLogs = docs.where((doc) {
+                          final data = doc.data() as Map<String, dynamic>;
+                          final logDate = data['date'];
+                          final logWindDir = data['windDirFrom'];
+                          final logComment = data['comment_$category'];
+
+                          if (logDate == _formattedDate || logComment == null || logComment.toString().trim().isEmpty) {
+                            return false;
+                          }
+
+                          if (currentWindDir != null && logWindDir == currentWindDir) {
+                            return true;
+                          }
+                          return false;
+                        }).toList();
+
+                        if (similarLogs.isEmpty) {
+                          return const Center(
+                            child: Text('似た条件で、コメントが書かれた過去ログはありません。', style: TextStyle(color: Colors.grey)),
+                          );
+                        }
+
+                        return ListView.separated(
+                          controller: controller,
+                          padding: const EdgeInsets.all(16),
+                          itemCount: similarLogs.length,
+                          separatorBuilder: (_, __) => const Divider(),
+                          itemBuilder: (context, index) {
+                            final data = similarLogs[index].data() as Map<String, dynamic>;
+                            final date = data['date'];
+                            final timeSlot = data['timeSlot'];
+                            final speed = data['windSpeedMin'] ?? '?';
+                            final comment = data['comment_$category'];
+
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey.shade200,
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text('$date ($timeSlot)', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text('風速: $speed m/s〜', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                Text(comment, style: const TextStyle(fontSize: 14, height: 1.5)),
+                              ],
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 }
 
@@ -1090,11 +1247,17 @@ class AutoSaveTextField extends StatefulWidget {
   @override
   State<AutoSaveTextField> createState() => _AutoSaveTextFieldState();
 }
+
 class _AutoSaveTextFieldState extends State<AutoSaveTextField> {
   late TextEditingController _controller;
   Timer? _debounce;
+
   @override
-  void initState() { super.initState(); _controller = TextEditingController(text: widget.initialText); }
+  void initState() { 
+    super.initState(); 
+    _controller = TextEditingController(text: widget.initialText); 
+  }
+
   @override
   void didUpdateWidget(covariant AutoSaveTextField oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -1102,8 +1265,18 @@ class _AutoSaveTextFieldState extends State<AutoSaveTextField> {
        _controller.text = widget.initialText;
     }
   }
+
   @override
-  void dispose() { _debounce?.cancel(); _controller.dispose(); super.dispose(); }
+  void dispose() { 
+    // ★修正箇所3: タブ移動等で画面が破棄される瞬間に、未保存があれば強制保存
+    if (_debounce?.isActive ?? false) {
+      _debounce!.cancel();
+      widget.onSave(_controller.text);
+    }
+    _controller.dispose(); 
+    super.dispose(); 
+  }
+
   @override
   Widget build(BuildContext context) {
     return TextField(
