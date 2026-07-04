@@ -10,6 +10,7 @@ import 'package:url_launcher/url_launcher.dart'; // URLを開く用
 import 'gemini_config.dart';
 import 'haitei_checker_page.dart';
 import 'amedas_page.dart';
+import 'weather_map_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -29,6 +30,11 @@ class _HomePageState extends State<HomePage> {
 
   String? _myTeamId;
 
+  // チャート用クエリの結果をキャッシュする。
+  // FutureBuilderにbuildごとの新しいFutureを渡すと、再描画のたびに
+  // Firestoreへの再クエリが走り、スピナーが出続けて動作が重くなる。
+  Future<Map<String, List<double>>>? _chartDataFuture;
+
   final List<String> _radarAxisTitles = ['動作', 'セール\nトリム', 'ヒール\nトリム', 'VMG', 'スタート', 'コース'];
 
   @override
@@ -41,15 +47,19 @@ class _HomePageState extends State<HomePage> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
+    String? teamId;
     try {
       final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
-      if (mounted && userDoc.exists) {
-        setState(() {
-          _myTeamId = userDoc.data()?['teamId'];
-        });
-      }
+      teamId = userDoc.data()?['teamId'];
     } catch (e) {
       debugPrint("User fetch error: $e");
+    }
+    if (mounted) {
+      setState(() {
+        _myTeamId = teamId;
+        // teamIdが確定してから1回だけチャートデータを取得する
+        _chartDataFuture = _fetchChartData();
+      });
     }
   }
 
@@ -404,6 +414,7 @@ class _HomePageState extends State<HomePage> {
           children: [
             _buildHaiteiCheckerBanner(),
             _buildAmedasBanner(),
+            _buildWeatherMapBanner(),
             _buildChartSection(),
             const SizedBox(height: 20),
             _buildAISection(),
@@ -506,11 +517,54 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  // 天気図ページへの入口バナー
+  Widget _buildWeatherMapBanner() {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      child: Material(
+        color: Colors.blueGrey.shade600,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const WeatherMapPage()),
+            );
+          },
+          child: const Padding(
+            padding: EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Icon(Icons.map_outlined, color: Colors.white, size: 36),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('天気図',
+                          style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold)),
+                      SizedBox(height: 2),
+                      Text('実況・予想天気図から今日の気象変化を出艇前に予測',
+                          style: TextStyle(color: Colors.white70, fontSize: 12)),
+                    ],
+                  ),
+                ),
+                Icon(Icons.chevron_right, color: Colors.white),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildChartSection() {
     return FutureBuilder<Map<String, List<double>>>(
-      future: _fetchChartData(),
+      future: _chartDataFuture,
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
+        // _chartDataFuture == null はチーム情報の読み込み待ち
+        if (_chartDataFuture == null || snapshot.connectionState == ConnectionState.waiting) {
           return const SizedBox(height: 300, child: Center(child: CircularProgressIndicator()));
         }
         if (!snapshot.hasData || snapshot.data!.isEmpty) {

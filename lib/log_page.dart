@@ -1102,6 +1102,15 @@ class _LogPageState extends State<LogPage> {
       return;
     }
 
+    // クエリはシート表示前に1回だけ実行する。
+    // builder内で生成するとシートのドラッグ等で再ビルドされるたびに
+    // 全件再取得が走り、スピナーが出続けて動作が重くなる。
+    final Future<QuerySnapshot> pastLogsFuture = FirebaseFirestore.instance
+        .collection('practice_reports')
+        .where('teamId', isEqualTo: _myTeamId)
+        .where('userId', isEqualTo: FirebaseAuth.instance.currentUser?.uid)
+        .get();
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -1145,12 +1154,7 @@ class _LogPageState extends State<LogPage> {
                   
                   Expanded(
                     child: FutureBuilder<QuerySnapshot>(
-                      // ★修正: チームIDを条件に追加＆orderByを削除
-                      future: FirebaseFirestore.instance
-                          .collection('practice_reports')
-                          .where('teamId', isEqualTo: _myTeamId) 
-                          .where('userId', isEqualTo: FirebaseAuth.instance.currentUser?.uid)
-                          .get(),
+                      future: pastLogsFuture,
                       builder: (context, snapshot) {
                         if (snapshot.connectionState == ConnectionState.waiting) {
                           return const Center(child: CircularProgressIndicator());

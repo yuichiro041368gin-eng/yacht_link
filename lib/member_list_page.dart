@@ -129,12 +129,16 @@ class _MemberDetailPageState extends State<MemberDetailPage> {
   bool _isViewerAdmin = false;
   // 管理者編集の結果を画面に反映できるようローカルに保持
   late Map<String, dynamic> _userData;
+  // チャート用クエリの結果をキャッシュする。
+  // buildごとに新しいFutureを渡すと再描画のたびに再クエリが走ってしまう。
+  late Future<Map<String, List<double>>> _chartDataFuture;
   final List<String> _radarAxisTitles = ['動作', 'セール\nトリム', 'ヒール\nトリム', 'VMG', 'スタート', 'コース'];
 
   @override
   void initState() {
     super.initState();
     _userData = Map<String, dynamic>.from(widget.userData);
+    _chartDataFuture = _fetchChartData();
     _checkViewerRole();
   }
 
@@ -147,7 +151,10 @@ class _MemberDetailPageState extends State<MemberDetailPage> {
       ),
     );
     if (updated != null && mounted) {
-      setState(() => _userData = {..._userData, ...updated});
+      setState(() {
+        _userData = {..._userData, ...updated};
+        _chartDataFuture = _fetchChartData();
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('プロフィールを更新しました')),
       );
@@ -431,7 +438,7 @@ class _MemberDetailPageState extends State<MemberDetailPage> {
             ),
 
             FutureBuilder<Map<String, List<double>>>(
-              future: _fetchChartData(),
+              future: _chartDataFuture,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const SizedBox(height: 200, child: Center(child: CircularProgressIndicator()));
