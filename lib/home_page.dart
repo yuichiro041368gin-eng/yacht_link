@@ -12,6 +12,7 @@ import 'haitei_checker_page.dart';
 import 'amedas_page.dart';
 import 'weather_map_page.dart';
 import 'app_theme.dart';
+import 'streak_badges.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -35,6 +36,9 @@ class _HomePageState extends State<HomePage> {
   // FutureBuilderにbuildごとの新しいFutureを渡すと、再描画のたびに
   // Firestoreへの再クエリが走り、スピナーが出続けて動作が重くなる。
   Future<Map<String, List<double>>>? _chartDataFuture;
+
+  // ストリーク・バッジ用の統計（直近1年の日誌から算出）
+  Future<PracticeStats>? _statsFuture;
 
   final List<String> _radarAxisTitles = ['動作', 'セール\nトリム', 'ヒール\nトリム', 'VMG', 'スタート', 'コース'];
 
@@ -60,7 +64,31 @@ class _HomePageState extends State<HomePage> {
         _myTeamId = teamId;
         // teamIdが確定してから1回だけチャートデータを取得する
         _chartDataFuture = _fetchChartData();
+        _statsFuture = _fetchStats();
       });
+    }
+  }
+
+  // 直近1年の自分の日誌からストリーク・バッジ統計を計算
+  Future<PracticeStats> _fetchStats() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null || _myTeamId == null) return computePracticeStats(const []);
+
+    try {
+      final oneYearAgo = DateTime.now().subtract(const Duration(days: 365));
+      final snapshot = await FirebaseFirestore.instance
+          .collection('practice_reports')
+          .where('userId', isEqualTo: user.uid)
+          .where('teamId', isEqualTo: _myTeamId)
+          .where('date',
+              isGreaterThanOrEqualTo: DateFormat('yyyy-MM-dd').format(oneYearAgo))
+          .get();
+
+      return computePracticeStats(
+          snapshot.docs.map((d) => d.data()).toList());
+    } catch (e) {
+      debugPrint('ストリーク統計の取得エラー: $e');
+      return computePracticeStats(const []);
     }
   }
 
@@ -406,9 +434,13 @@ class _HomePageState extends State<HomePage> {
       await _fetchMyTeamId();
       return;
     }
-    final future = _fetchChartData();
-    setState(() => _chartDataFuture = future);
-    await future;
+    final chartFuture = _fetchChartData();
+    final statsFuture = _fetchStats();
+    setState(() {
+      _chartDataFuture = chartFuture;
+      _statsFuture = statsFuture;
+    });
+    await Future.wait([chartFuture, statsFuture]);
   }
 
   @override
@@ -424,6 +456,7 @@ class _HomePageState extends State<HomePage> {
           child: Column(
             children: [
               _buildHeroHeader(),
+              _buildStreakSection(),
               _buildQuickAccessSection(),
               _buildChartSection(),
               const SizedBox(height: 20),
@@ -504,6 +537,37 @@ class _HomePageState extends State<HomePage> {
           ],
         ),
       ),
+    );
+  }
+
+  // 練習ストリーク🔥とバッジ
+  Widget _buildStreakSection() {
+    return FutureBuilder<PracticeStats>(
+      future: _statsFuture,
+      builder: (context, snapshot) {
+        if (_statsFuture == null ||
+            snapshot.connectionState == ConnectionState.waiting) {
+          return Container(
+            height: 96,
+            margin: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: AppColors.hairline),
+            ),
+            child: const Row(
+              children: [
+                Skeleton(width: 44, height: 44, borderRadius: BorderRadius.all(Radius.circular(14))),
+                SizedBox(width: 12),
+                Expanded(child: Skeleton(height: 18)),
+              ],
+            ),
+          );
+        }
+        if (!snapshot.hasData) return const SizedBox.shrink();
+        return StreakBadgesCard(stats: snapshot.data!);
+      },
     );
   }
 
