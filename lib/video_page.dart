@@ -1,3 +1,4 @@
+import 'app_theme.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -135,8 +136,8 @@ class _VideoPageState extends State<VideoPage> {
 
                       return ListTile(
                         leading: CircleAvatar(
-                          backgroundColor: Colors.indigo.shade100,
-                          child: const Icon(Icons.movie_creation, color: Colors.indigo),
+                          backgroundColor: AppColors.primary.shade100,
+                          child: const Icon(Icons.movie_creation, color: AppColors.primary),
                         ),
                         title: Text(dateStr, style: const TextStyle(fontWeight: FontWeight.bold)),
                         subtitle: Column(
@@ -144,7 +145,7 @@ class _VideoPageState extends State<VideoPage> {
                           children: [
                             Text('$user ($videoName)'),
                             if (userPrompt.isNotEmpty)
-                              Text('Q: $userPrompt', style: TextStyle(color: Colors.indigo.shade300, fontSize: 12)),
+                              Text('Q: $userPrompt', style: TextStyle(color: AppColors.primary.shade300, fontSize: 12)),
                             Text('A: $preview...'),
                           ],
                         ),
@@ -299,10 +300,10 @@ class _VideoPageState extends State<VideoPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: AppColors.scaffoldBg,
       appBar: AppBar(
         title: const Text('動画分析', style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.indigo,
+        backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         centerTitle: true,
       ),
@@ -331,14 +332,14 @@ class _VideoPageState extends State<VideoPage> {
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.indigo.shade100, width: 2),
+                    border: Border.all(color: AppColors.primary.shade100, width: 2),
                   ),
                   child: const Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.video_library, size: 50, color: Colors.indigo),
+                      Icon(Icons.video_library, size: 50, color: AppColors.primary),
                       SizedBox(height: 10),
-                      Text('ギャラリーから動画を選択', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.indigo)),
+                      Text('ギャラリーから動画を選択', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary)),
                     ],
                   ),
                 ),
@@ -365,7 +366,7 @@ class _VideoPageState extends State<VideoPage> {
                           IconButton(
                             icon: Icon(
                               _videoController!.value.isPlaying ? Icons.pause : Icons.play_arrow,
-                              color: Colors.indigo,
+                              color: AppColors.primary,
                               size: 32,
                             ),
                             onPressed: () => setState(() => _videoController!.value.isPlaying ? _videoController!.pause() : _videoController!.play()),
@@ -409,7 +410,7 @@ class _VideoPageState extends State<VideoPage> {
                   : const Icon(Icons.analytics),
               label: Text(_isLoading ? '分析中...' : 'AI分析を実行'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.indigo,
+                backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
@@ -421,8 +422,8 @@ class _VideoPageState extends State<VideoPage> {
             // 3. 履歴ボタン
             TextButton.icon(
               onPressed: _showHistoryDialog,
-              icon: const Icon(Icons.history, color: Colors.indigo),
-              label: const Text('過去の分析履歴を見る (チーム内共有)', style: TextStyle(color: Colors.indigo, fontWeight: FontWeight.bold)),
+              icon: const Icon(Icons.history, color: AppColors.primary),
+              label: const Text('過去の分析履歴を見る (チーム内共有)', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
             ),
 
             const SizedBox(height: 20),
@@ -431,7 +432,7 @@ class _VideoPageState extends State<VideoPage> {
             if (_isLoading)
                const Padding(
                  padding: EdgeInsets.all(32.0),
-                 child: Text('動画を分析しています...\n(そのままお待ちください)', textAlign: TextAlign.center, style: TextStyle(color: Colors.indigo)),
+                 child: Text('動画を分析しています...\n(そのままお待ちください)', textAlign: TextAlign.center, style: TextStyle(color: AppColors.primary)),
                ),
 
             if (_resultText.isNotEmpty && !_isLoading) ...[

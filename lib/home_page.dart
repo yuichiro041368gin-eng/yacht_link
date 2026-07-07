@@ -11,6 +11,7 @@ import 'gemini_config.dart';
 import 'haitei_checker_page.dart';
 import 'amedas_page.dart';
 import 'weather_map_page.dart';
+import 'app_theme.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -124,7 +125,7 @@ class _HomePageState extends State<HomePage> {
                       final preview = contentStr.replaceAll('\n', ' ').substring(0, (contentStr.length > 30) ? 30 : contentStr.length);
 
                       return ListTile(
-                        leading: CircleAvatar(backgroundColor: Colors.indigo.shade100, child: const Icon(Icons.history, color: Colors.indigo)),
+                        leading: CircleAvatar(backgroundColor: AppColors.primary.shade50, child: const Icon(Icons.history, color: AppColors.primary)),
                         title: Text(dateStr, style: const TextStyle(fontWeight: FontWeight.bold)),
                         subtitle: Text('$preview...', maxLines: 2, overflow: TextOverflow.ellipsis),
                         onTap: () {
@@ -402,19 +403,12 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
-      appBar: AppBar(
-        title: const Text('マイ・ダッシュボード', style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.indigo,
-        foregroundColor: Colors.white,
-        centerTitle: true,
-      ),
+      backgroundColor: AppColors.scaffoldBg,
       body: SingleChildScrollView(
         child: Column(
           children: [
-            _buildHaiteiCheckerBanner(),
-            _buildAmedasBanner(),
-            _buildWeatherMapBanner(),
+            _buildHeroHeader(),
+            _buildQuickAccessSection(),
             _buildChartSection(),
             const SizedBox(height: 20),
             _buildAISection(),
@@ -425,136 +419,110 @@ class _HomePageState extends State<HomePage> {
           ? FloatingActionButton.extended(
               onPressed: _startAnalysis,
               icon: const Icon(Icons.auto_awesome),
-              label: const Text('最新データでAI分析'),
-              backgroundColor: Colors.indigo,
-              foregroundColor: Colors.white,
+              label: const Text('最新データでAI分析',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
             )
           : null,
     );
   }
 
-  // 配艇チェッカーへの入口バナー
-  Widget _buildHaiteiCheckerBanner() {
+  // ヒーローヘッダー（夜の海グラデーション）
+  Widget _buildHeroHeader() {
+    final now = DateTime.now();
+    const weekdays = ['月', '火', '水', '木', '金', '土', '日'];
+    final dateStr = '${now.month}月${now.day}日 (${weekdays[now.weekday - 1]})';
+
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-      child: Material(
-        color: Colors.teal.shade600,
-        borderRadius: BorderRadius.circular(16),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const HaiteiCheckerPage()),
-            );
-          },
-          child: const Padding(
-            padding: EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Icon(Icons.fact_check, color: Colors.white, size: 36),
-                SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('配艇チェッカー',
-                          style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold)),
-                      SizedBox(height: 2),
-                      Text('出艇前に配艇が安全マニュアルの基準を満たすかチェック',
-                          style: TextStyle(color: Colors.white70, fontSize: 12)),
-                    ],
-                  ),
-                ),
-                Icon(Icons.chevron_right, color: Colors.white),
-              ],
-            ),
+      width: double.infinity,
+      decoration: BoxDecoration(
+        gradient: AppGradients.hero,
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(28)),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.navy.withValues(alpha: 0.35),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
           ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(28)),
+        child: Stack(
+          children: [
+            Positioned(
+              right: -18,
+              top: -14,
+              child: Icon(Icons.sailing,
+                  size: 150, color: Colors.white.withValues(alpha: 0.07)),
+            ),
+            SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 26),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(dateStr,
+                        style: const TextStyle(
+                            color: AppColors.aqua,
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1.2)),
+                    const SizedBox(height: 6),
+                    const Text('マイ・ダッシュボード',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5)),
+                    const SizedBox(height: 6),
+                    Text('今日も良い風を。データで次の一艇身へ。',
+                        style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.75),
+                            fontSize: 12.5)),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  // アメダス風況モニターへの入口バナー
-  Widget _buildAmedasBanner() {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-      child: Material(
-        color: Colors.indigo.shade400,
-        borderRadius: BorderRadius.circular(16),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const AmedasPage()),
-            );
-          },
-          child: const Padding(
-            padding: EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Icon(Icons.air, color: Colors.white, size: 36),
-                SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('アメダス風況モニター',
-                          style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold)),
-                      SizedBox(height: 2),
-                      Text('風向に応じた観測地点の10分毎データを地図から確認',
-                          style: TextStyle(color: Colors.white70, fontSize: 12)),
-                    ],
-                  ),
-                ),
-                Icon(Icons.chevron_right, color: Colors.white),
-              ],
-            ),
+  // 出艇前チェックのクイックアクセス（配艇・風況・天気図）
+  Widget _buildQuickAccessSection() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+      child: Column(
+        children: [
+          GradientBanner(
+            title: '配艇チェッカー',
+            subtitle: '出艇前に配艇が安全マニュアルの基準を満たすかチェック',
+            icon: Icons.fact_check_outlined,
+            gradient: AppGradients.teal,
+            onTap: () => Navigator.push(context,
+                MaterialPageRoute(builder: (context) => const HaiteiCheckerPage())),
           ),
-        ),
-      ),
-    );
-  }
-
-  // 天気図ページへの入口バナー
-  Widget _buildWeatherMapBanner() {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-      child: Material(
-        color: Colors.blueGrey.shade600,
-        borderRadius: BorderRadius.circular(16),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const WeatherMapPage()),
-            );
-          },
-          child: const Padding(
-            padding: EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Icon(Icons.map_outlined, color: Colors.white, size: 36),
-                SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('天気図',
-                          style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold)),
-                      SizedBox(height: 2),
-                      Text('実況・予想天気図から今日の気象変化を出艇前に予測',
-                          style: TextStyle(color: Colors.white70, fontSize: 12)),
-                    ],
-                  ),
-                ),
-                Icon(Icons.chevron_right, color: Colors.white),
-              ],
-            ),
+          const SizedBox(height: 12),
+          GradientBanner(
+            title: 'アメダス風況モニター',
+            subtitle: '風向に応じた観測地点の10分毎データを地図から確認',
+            icon: Icons.air,
+            gradient: AppGradients.sky,
+            onTap: () => Navigator.push(context,
+                MaterialPageRoute(builder: (context) => const AmedasPage())),
           ),
-        ),
+          const SizedBox(height: 12),
+          GradientBanner(
+            title: '天気図',
+            subtitle: '実況・予想天気図から今日の気象変化を出艇前に予測',
+            icon: Icons.map_outlined,
+            gradient: AppGradients.slate,
+            onTap: () => Navigator.push(context,
+                MaterialPageRoute(builder: (context) => const WeatherMapPage())),
+          ),
+        ],
       ),
     );
   }
@@ -572,38 +540,56 @@ class _HomePageState extends State<HomePage> {
             height: 150,
             margin: const EdgeInsets.all(16),
             alignment: Alignment.center,
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: AppColors.hairline),
+            ),
             child: const Text('データがありません。\n日誌を投稿するとグラフが表示されます。', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
           );
         }
         final data = snapshot.data!;
-        
+
+        const Color lightWind = Color(0xFF12B886); // 微風: エメラルド
+        const Color mediumWind = Color(0xFF339AF0); // 順風: スカイブルー
+        const Color heavyWind = Color(0xFFFF6B6B); // 強風: コーラル
+
         return Container(
           margin: const EdgeInsets.all(16),
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [BoxShadow(color: Colors.grey.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 4))],
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: AppColors.hairline),
+            boxShadow: [BoxShadow(color: AppColors.navy.withValues(alpha: 0.08), blurRadius: 14, offset: const Offset(0, 6))],
           ),
           child: Column(
             children: [
-              const Row(
+              Row(
                 children: [
-                  Icon(Icons.radar, color: Colors.indigo),
-                  SizedBox(width: 8),
-                  Text('風速別スキルバランス', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.indigo)),
+                  Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      gradient: AppGradients.hero,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.radar, color: Colors.white, size: 20),
+                  ),
+                  const SizedBox(width: 10),
+                  const Text('風速別スキルバランス',
+                      style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: AppColors.navy, letterSpacing: 0.3)),
                 ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 14),
               const Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  _LegendItem(color: Colors.green, label: '微風'),
-                  SizedBox(width: 12),
-                  _LegendItem(color: Colors.blue, label: '順風'),
-                  SizedBox(width: 12),
-                  _LegendItem(color: Colors.red, label: '強風'),
+                  _LegendItem(color: lightWind, label: '微風'),
+                  SizedBox(width: 8),
+                  _LegendItem(color: mediumWind, label: '順風'),
+                  SizedBox(width: 8),
+                  _LegendItem(color: heavyWind, label: '強風'),
                 ],
               ),
               const SizedBox(height: 20),
@@ -620,23 +606,23 @@ class _HomePageState extends State<HomePage> {
                         entryRadius: 0,
                         borderWidth: 0,
                       ),
-                      _buildRadarDataSet(data['light']!, Colors.green),
-                      _buildRadarDataSet(data['medium']!, Colors.blue),
-                      _buildRadarDataSet(data['heavy']!, Colors.red),
+                      _buildRadarDataSet(data['light']!, lightWind),
+                      _buildRadarDataSet(data['medium']!, mediumWind),
+                      _buildRadarDataSet(data['heavy']!, heavyWind),
                     ],
                     radarBackgroundColor: Colors.transparent,
                     borderData: FlBorderData(show: false),
-                    radarBorderData: const BorderSide(color: Colors.indigo, width: 1.5),
+                    radarBorderData: const BorderSide(color: AppColors.primary, width: 1.5),
                     titlePositionPercentageOffset: 0.1,
-                    titleTextStyle: const TextStyle(color: Colors.black87, fontSize: 12, fontWeight: FontWeight.bold),
+                    titleTextStyle: const TextStyle(color: AppColors.navy, fontSize: 12, fontWeight: FontWeight.bold),
                     getTitle: (index, angle) {
                       if (index < _radarAxisTitles.length) return RadarChartTitle(text: _radarAxisTitles[index]);
                       return const RadarChartTitle(text: '');
                     },
-                    tickCount: 3, 
+                    tickCount: 3,
                     ticksTextStyle: const TextStyle(color: Colors.transparent),
-                    tickBorderData: const BorderSide(color: Colors.grey, width: 0.5),
-                    gridBorderData: const BorderSide(color: Colors.grey, width: 0.5),
+                    tickBorderData: BorderSide(color: AppColors.primary.shade100, width: 0.8),
+                    gridBorderData: BorderSide(color: AppColors.primary.shade100, width: 0.8),
                   ),
                 ),
               ),
@@ -667,37 +653,58 @@ class _HomePageState extends State<HomePage> {
         margin: const EdgeInsets.symmetric(horizontal: 16),
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: Colors.indigo.shade50,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.indigo.withValues(alpha: 0.2)),
+          gradient: AppGradients.hero,
+          borderRadius: BorderRadius.circular(22),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.navy.withValues(alpha: 0.35),
+              blurRadius: 14,
+              offset: const Offset(0, 8),
+            ),
+          ],
         ),
         child: Column(
           children: [
-            const Icon(Icons.psychology, size: 60, color: Colors.indigo),
-            const SizedBox(height: 16),
-            const Text('AIコーチ分析', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            const Text('あなたの日誌を分析し、課題と練習プランを提示します。', 
-              textAlign: TextAlign.center, style: TextStyle(color: Colors.black54, fontSize: 14)),
-            const SizedBox(height: 20),
-            
-            SizedBox(
-              width: double.infinity,
-              height: 45,
-              child: ElevatedButton(
-                onPressed: _startAnalysis,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.indigo, 
-                  foregroundColor: Colors.white, 
-                ),
-                child: const Text('分析を開始', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withValues(alpha: 0.10),
+                border: Border.all(color: AppColors.cyan.withValues(alpha: 0.5)),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.cyan.withValues(alpha: 0.35),
+                    blurRadius: 24,
+                  ),
+                ],
               ),
+              child: const Icon(Icons.psychology, size: 38, color: AppColors.aqua),
             ),
             const SizedBox(height: 16),
+            const Text('AIコーチ分析',
+                style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                    letterSpacing: 0.5)),
+            const SizedBox(height: 8),
+            Text('あなたの日誌を分析し、課題と練習プランを提示します。',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.8), fontSize: 13.5)),
+            const SizedBox(height: 22),
+            _GradientButton(
+              label: '分析を開始',
+              icon: Icons.auto_awesome,
+              onPressed: _startAnalysis,
+            ),
+            const SizedBox(height: 10),
             TextButton.icon(
               onPressed: _showHistoryDialog,
-              icon: const Icon(Icons.history, color: Colors.indigo),
-              label: const Text('過去の分析履歴を見る', style: TextStyle(color: Colors.indigo, fontWeight: FontWeight.bold)),
+              icon: const Icon(Icons.history, color: AppColors.aqua, size: 20),
+              label: const Text('過去の分析履歴を見る',
+                  style: TextStyle(color: AppColors.aqua, fontWeight: FontWeight.bold)),
             ),
           ],
         ),
@@ -705,14 +712,22 @@ class _HomePageState extends State<HomePage> {
     }
 
     if (_isLoading) {
-      return Padding(
-        padding: const EdgeInsets.all(32.0),
+      return Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16),
+        padding: const EdgeInsets.all(32),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: AppColors.hairline),
+        ),
         child: Center(
           child: Column(
             children: [
-              const CircularProgressIndicator(),
+              const CircularProgressIndicator(color: AppColors.primary),
               const SizedBox(height: 16),
-              Text(_loadingMessage, style: const TextStyle(color: Colors.indigo, fontWeight: FontWeight.bold)),
+              Text(_loadingMessage,
+                  style: const TextStyle(
+                      color: AppColors.primary, fontWeight: FontWeight.bold)),
             ],
           ),
         ),
@@ -721,24 +736,36 @@ class _HomePageState extends State<HomePage> {
 
     return Container(
       width: double.infinity,
-      color: const Color(0xFFF5F7FA),
+      color: AppColors.scaffoldBg,
       child: Column(
         children: [
           if (_analyzedDate.isNotEmpty)
             Container(
               width: double.infinity,
               margin: const EdgeInsets.symmetric(horizontal: 16),
-              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-              decoration: BoxDecoration(color: Colors.amber[100], borderRadius: const BorderRadius.vertical(top: Radius.circular(12))),
-              child: Text('実行: $_analyzedDate', textAlign: TextAlign.center, style: const TextStyle(color: Colors.brown, fontWeight: FontWeight.bold)),
+              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+              decoration: const BoxDecoration(
+                gradient: AppGradients.hero,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.auto_awesome, color: AppColors.aqua, size: 16),
+                  const SizedBox(width: 8),
+                  Text('実行: $_analyzedDate',
+                      style: const TextStyle(
+                          color: Colors.white, fontWeight: FontWeight.bold)),
+                ],
+              ),
             ),
-          
+
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 16),
             decoration: BoxDecoration(
                color: Colors.white,
-               borderRadius: _analyzedDate.isNotEmpty ? const BorderRadius.vertical(bottom: Radius.circular(12)) : BorderRadius.circular(12),
-               border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+               borderRadius: _analyzedDate.isNotEmpty ? const BorderRadius.vertical(bottom: Radius.circular(18)) : BorderRadius.circular(18),
+               border: Border.all(color: AppColors.hairline),
             ),
             child: Column(
               children: [
@@ -781,12 +808,73 @@ class _LegendItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Container(width: 12, height: 12, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
-        const SizedBox(width: 4),
-        Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black54)),
-      ],
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+          const SizedBox(width: 6),
+          Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: color)),
+        ],
+      ),
+    );
+  }
+}
+
+/// シアングラデーションのCTAボタン
+class _GradientButton extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final VoidCallback onPressed;
+  const _GradientButton({
+    required this.label,
+    required this.icon,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      height: 48,
+      decoration: BoxDecoration(
+        gradient: AppGradients.cyanCta,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.cyan.withValues(alpha: 0.4),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: onPressed,
+          child: Center(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, color: AppColors.deepNavy, size: 20),
+                const SizedBox(width: 8),
+                Text(label,
+                    style: const TextStyle(
+                        color: AppColors.deepNavy,
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5)),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

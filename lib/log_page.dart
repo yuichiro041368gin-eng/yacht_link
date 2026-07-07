@@ -1,4 +1,5 @@
 // 使用モデル: gemini-3-flash-preview
+import 'app_theme.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -289,7 +290,7 @@ class _LogPageState extends State<LogPage> {
                       if (mounted) Navigator.pop(context);
                     }
                   },
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.indigo, foregroundColor: Colors.white),
+                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
                   child: const Text('追加'),
                 ),
               ],
@@ -404,7 +405,7 @@ class _LogPageState extends State<LogPage> {
       length: 6,
       child: Scaffold(
         appBar: AppBar(
-          backgroundColor: Colors.indigo,
+          backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
           title: Row(
             children: [
@@ -434,7 +435,7 @@ class _LogPageState extends State<LogPage> {
                     });
                   },
                   borderRadius: BorderRadius.circular(8),
-                  selectedColor: Colors.indigo,
+                  selectedColor: AppColors.primary,
                   fillColor: Colors.white,
                   color: Colors.white70,
                   constraints: const BoxConstraints(minHeight: 32, minWidth: 40),
@@ -526,7 +527,7 @@ class _LogPageState extends State<LogPage> {
                 ),
               ),
 
-            Text('$_formattedDate ($_timeSlot) のコンディション', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.indigo)),
+            Text('$_formattedDate ($_timeSlot) のコンディション', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.primary)),
             const SizedBox(height: 16),
 
             Container(
@@ -663,12 +664,12 @@ class _LogPageState extends State<LogPage> {
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
                     decoration: BoxDecoration(
-                      color: Colors.indigo.withOpacity(0.1),
-                      border: const Border(left: BorderSide(color: Colors.indigo, width: 4)),
+                      color: AppColors.primary.withOpacity(0.1),
+                      border: const Border(left: BorderSide(color: AppColors.primary, width: 4)),
                     ),
                     child: Text(
                       subCatName,
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.indigo),
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.primary),
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -724,10 +725,10 @@ class _LogPageState extends State<LogPage> {
                 Text('「$category」のメモ', style: const TextStyle(fontWeight: FontWeight.bold)),
                 TextButton.icon(
                   onPressed: () => _showSimilarPastLogsBottomSheet(context, category, currentData),
-                  icon: const Icon(Icons.manage_search, color: Colors.indigo),
-                  label: const Text('似た風の日の過去ログ', style: TextStyle(color: Colors.indigo)),
+                  icon: const Icon(Icons.manage_search, color: AppColors.primary),
+                  label: const Text('似た風の日の過去ログ', style: TextStyle(color: AppColors.primary)),
                   style: TextButton.styleFrom(
-                    backgroundColor: Colors.indigo.withOpacity(0.1),
+                    backgroundColor: AppColors.primary.withOpacity(0.1),
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   ),
                 ),
@@ -851,7 +852,7 @@ class _LogPageState extends State<LogPage> {
           children: [
             Card(
               elevation: 2,
-              color: Colors.indigo,
+              color: AppColors.primary,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
@@ -874,9 +875,9 @@ class _LogPageState extends State<LogPage> {
 
             const Row(
               children: [
-                Icon(Icons.bar_chart, color: Colors.indigo),
+                Icon(Icons.bar_chart, color: AppColors.primary),
                 SizedBox(width: 8),
-                Text('チームスコア平均', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.indigo)),
+                Text('チームスコア平均', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.primary)),
               ],
             ),
             const SizedBox(height: 4),
@@ -941,9 +942,9 @@ class _LogPageState extends State<LogPage> {
 
             const Row(
               children: [
-                Icon(Icons.forum, color: Colors.indigo),
+                Icon(Icons.forum, color: AppColors.primary),
                 SizedBox(width: 8),
-                Text('振り返りコメント', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.indigo)),
+                Text('振り返りコメント', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.primary)),
               ],
             ),
             const SizedBox(height: 10),
@@ -964,11 +965,11 @@ class _LogPageState extends State<LogPage> {
                 margin: const EdgeInsets.only(bottom: 12),
                 elevation: 0,
                 shape: RoundedRectangleBorder(
-                  side: BorderSide(color: Colors.indigo.withOpacity(0.2)),
+                  side: BorderSide(color: AppColors.primary.withOpacity(0.2)),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: ExpansionTile(
-                  leading: const Icon(Icons.folder_open, color: Colors.indigo),
+                  leading: const Icon(Icons.folder_open, color: AppColors.primary),
                   title: Text(cat, style: const TextStyle(fontWeight: FontWeight.bold)),
                   childrenPadding: const EdgeInsets.only(bottom: 12, left: 12, right: 12),
                   initiallyExpanded: false, 
@@ -986,8 +987,8 @@ class _LogPageState extends State<LogPage> {
                           children: [
                             CircleAvatar(
                               radius: 10,
-                              backgroundColor: Colors.indigo.shade100,
-                              child: Text(c['user']!.substring(0, 1).toUpperCase(), style: const TextStyle(fontSize: 10, color: Colors.indigo)),
+                              backgroundColor: AppColors.primary.shade100,
+                              child: Text(c['user']!.substring(0, 1).toUpperCase(), style: const TextStyle(fontSize: 10, color: AppColors.primary)),
                             ),
                             const SizedBox(width: 8),
                             Text(c['user']!, style: const TextStyle(fontSize: 11, color: Colors.grey)),
@@ -1131,17 +1132,17 @@ class _LogPageState extends State<LogPage> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.indigo.shade50,
+                      color: AppColors.primary.shade50,
                       borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.history, color: Colors.indigo),
+                        const Icon(Icons.history, color: AppColors.primary),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             '過去の「$category」の反省\n(条件: $currentWindDir / $currentWindSpeed m/s)',
-                            style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.indigo),
+                            style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
                           ),
                         ),
                         IconButton(

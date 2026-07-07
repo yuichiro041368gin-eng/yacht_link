@@ -1,3 +1,4 @@
+import 'app_theme.dart';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -269,10 +270,10 @@ class _AmedasPageState extends State<AmedasPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: AppColors.scaffoldBg,
       appBar: AppBar(
         title: const Text('アメダス風況モニター', style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.indigo,
+        backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         centerTitle: true,
       ),
@@ -323,12 +324,12 @@ class _AmedasPageState extends State<AmedasPage> {
                   child: ChoiceChip(
                     avatar: _SectorRangeIcon(
                       startDeg: _sectors[i].startDeg,
-                      color: selected ? Colors.white : Colors.indigo,
+                      color: selected ? Colors.white : AppColors.primary,
                     ),
                     showCheckmark: false,
                     label: Text(_sectors[i].label),
                     selected: selected,
-                    selectedColor: Colors.indigo,
+                    selectedColor: AppColors.primary,
                     labelStyle: TextStyle(
                         color: selected ? Colors.white : Colors.black87, fontSize: 13),
                     onSelected: (_) => _onSectorSelected(i),
@@ -386,7 +387,7 @@ class _AmedasPageState extends State<AmedasPage> {
         MarkerLayer(
           markers: _stations.map((s) {
             final displayed = _displayIds.contains(s.id);
-            final color = displayed ? Colors.indigo : Colors.grey.shade500;
+            final color = displayed ? AppColors.primary : Colors.grey.shade500;
             final state = _stationStates[s.id];
             final dir = state?.latest?.windDir;
             return Marker(
@@ -446,7 +447,7 @@ class _AmedasPageState extends State<AmedasPage> {
             padding: const EdgeInsets.fromLTRB(16, 10, 8, 0),
             child: Row(
               children: [
-                const Icon(Icons.compare_arrows, color: Colors.indigo, size: 20),
+                const Icon(Icons.compare_arrows, color: AppColors.primary, size: 20),
                 const SizedBox(width: 6),
                 Text(
                   '${_stationById(ids[0]).name} × ${_stationById(ids[1]).name}',
@@ -458,7 +459,7 @@ class _AmedasPageState extends State<AmedasPage> {
                 const Spacer(),
                 IconButton(
                   tooltip: '再読み込み（10分毎に確認）',
-                  icon: const Icon(Icons.refresh, color: Colors.indigo),
+                  icon: const Icon(Icons.refresh, color: AppColors.primary),
                   onPressed: anyLoading ? null : _reloadAll,
                 ),
               ],
@@ -519,7 +520,7 @@ class _AmedasPageState extends State<AmedasPage> {
       ),
       child: Row(
         children: [
-          _WindCompass(dir: latest?.windDir, size: 46, color: Colors.indigo),
+          _WindCompass(dir: latest?.windDir, size: 46, color: AppColors.primary),
           const SizedBox(width: 8),
           Expanded(
             child: Column(
@@ -545,7 +546,7 @@ class _AmedasPageState extends State<AmedasPage> {
                           style: const TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.bold,
-                              color: Colors.indigo)),
+                              color: AppColors.primary)),
                     ),
                   ],
                 ),
@@ -637,11 +638,11 @@ class _AmedasPageState extends State<AmedasPage> {
         // 安全マニュアルⅡ-1 ※1 の注意書き
         Container(
           width: double.infinity,
-          color: Colors.indigo.shade50,
+          color: AppColors.primary.shade50,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
           child: const Text(
             '⚠ 風速5m/s未満から10m/s以上への急上昇を確認した場合は出艇を取りやめる（海上ではただちにハーバーバック）',
-            style: TextStyle(fontSize: 11, color: Colors.indigo),
+            style: TextStyle(fontSize: 11, color: AppColors.primary),
           ),
         ),
       ],
@@ -663,7 +664,7 @@ class _AmedasPageState extends State<AmedasPage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          _WindCompass(dir: row.windDir, size: 20, color: Colors.indigo, showLabel: false),
+          _WindCompass(dir: row.windDir, size: 20, color: AppColors.primary, showLabel: false),
           const SizedBox(width: 4),
           SizedBox(
             width: 44,
@@ -755,7 +756,7 @@ class _WindCompass extends StatelessWidget {
   const _WindCompass({
     required this.dir,
     this.size = 56,
-    this.color = Colors.indigo,
+    this.color = AppColors.primary,
     this.showLabel = true,
   });
 

@@ -1,3 +1,4 @@
+import 'app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -247,10 +248,10 @@ class _HaiteiCheckerPageState extends State<HaiteiCheckerPage> {
                           leading: CircleAvatar(
                             backgroundColor: isAssigned
                                 ? Colors.grey.shade300
-                                : Colors.indigo.shade100,
+                                : AppColors.primary.shade100,
                             child: Icon(
                               Icons.person,
-                              color: isAssigned ? Colors.grey : Colors.indigo,
+                              color: isAssigned ? Colors.grey : AppColors.primary,
                             ),
                           ),
                           title: Text(m.name),
@@ -473,7 +474,7 @@ class _HaiteiCheckerPageState extends State<HaiteiCheckerPage> {
                         icon: const Icon(Icons.save),
                         label: const Text('結果を記録'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.indigo,
+                          backgroundColor: AppColors.primary,
                           foregroundColor: Colors.white,
                         ),
                         onPressed: () => _savePlan(cond, findings, reportText),
@@ -725,7 +726,7 @@ class _HaiteiCheckerPageState extends State<HaiteiCheckerPage> {
       return Scaffold(
         appBar: AppBar(
           title: const Text('配艇チェッカー'),
-          backgroundColor: Colors.indigo,
+          backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
         ),
         body: Center(
@@ -749,7 +750,7 @@ class _HaiteiCheckerPageState extends State<HaiteiCheckerPage> {
                       icon: const Icon(Icons.refresh),
                       label: const Text('再読み込み'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.indigo,
+                        backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
                       ),
                       onPressed: () {
@@ -767,10 +768,10 @@ class _HaiteiCheckerPageState extends State<HaiteiCheckerPage> {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: AppColors.scaffoldBg,
       appBar: AppBar(
         title: const Text('配艇チェッカー'),
-        backgroundColor: Colors.indigo,
+        backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         actions: [
           IconButton(
@@ -805,7 +806,7 @@ class _HaiteiCheckerPageState extends State<HaiteiCheckerPage> {
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.indigo,
+                backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
               ),
               onPressed: _runCheck,
@@ -840,7 +841,7 @@ class _HaiteiCheckerPageState extends State<HaiteiCheckerPage> {
         children: [
           Row(
             children: [
-              Icon(icon, color: Colors.indigo),
+              Icon(icon, color: AppColors.primary),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -848,7 +849,7 @@ class _HaiteiCheckerPageState extends State<HaiteiCheckerPage> {
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: Colors.indigo,
+                    color: AppColors.primary,
                   ),
                 ),
               ),
@@ -980,7 +981,7 @@ class _HaiteiCheckerPageState extends State<HaiteiCheckerPage> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             decoration: BoxDecoration(
-              color: Colors.indigo,
+              color: AppColors.primary,
               borderRadius: BorderRadius.circular(20),
               boxShadow: const [
                 BoxShadow(color: Colors.black26, blurRadius: 6),
@@ -1016,7 +1017,7 @@ class _HaiteiCheckerPageState extends State<HaiteiCheckerPage> {
           foregroundDecoration: candidates.isNotEmpty
               ? BoxDecoration(
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.indigo, width: 2),
+                  border: Border.all(color: AppColors.primary, width: 2),
                 )
               : null,
           child: content,
@@ -1093,7 +1094,7 @@ class _HaiteiCheckerPageState extends State<HaiteiCheckerPage> {
                 else
                   const Icon(
                     Icons.person_add_alt,
-                    color: Colors.indigo,
+                    color: AppColors.primary,
                     size: 20,
                   ),
               ],
@@ -1137,7 +1138,7 @@ class _HaiteiCheckerPageState extends State<HaiteiCheckerPage> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.indigo.shade50.withValues(alpha: 0.5),
+        color: AppColors.primary.shade50.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -1149,7 +1150,7 @@ class _HaiteiCheckerPageState extends State<HaiteiCheckerPage> {
                 'ヨット ${index + 1}',
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
-                  color: Colors.indigo,
+                  color: AppColors.primary,
                 ),
               ),
               const SizedBox(width: 12),

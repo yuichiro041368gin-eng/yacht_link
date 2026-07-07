@@ -1,3 +1,4 @@
+import 'app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -49,15 +50,15 @@ class _EquipmentPageState extends State<EquipmentPage> {
                 appBar: AppBar(
                   title: const Text('機材・備品管理', style: TextStyle(fontWeight: FontWeight.bold)),
                   centerTitle: true,
-                  backgroundColor: Colors.indigo,
+                  backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
                   elevation: 0,
                   actions: [Padding(padding: const EdgeInsets.only(right: 8.0), child: IconButton(icon: const Icon(Icons.settings), onPressed: () => _showCategoryManager(currentTeamId)))],
-                  bottom: TabBar(isScrollable: true, labelColor: Colors.white, unselectedLabelColor: Colors.white70, indicatorColor: Colors.amber, indicatorWeight: 3, tabs: categories.map((cat) => Tab(text: cat)).toList()),
+                  bottom: TabBar(isScrollable: true, labelColor: Colors.white, unselectedLabelColor: Colors.white70, indicatorColor: AppColors.aqua, indicatorWeight: 3, tabs: categories.map((cat) => Tab(text: cat)).toList()),
                 ),
                 body: TabBarView(children: categories.map((cat) => _buildEquipmentList(cat, categories, currentTeamId)).toList()),
                 floatingActionButton: Builder(
-                  builder: (context) => FloatingActionButton(onPressed: () { final int currentIndex = DefaultTabController.of(context).index; _showFormSheet(context: context, categories: categories, initialCategory: categories[currentIndex], currentTeamId: currentTeamId); }, backgroundColor: Colors.indigo, child: const Icon(Icons.add, color: Colors.white)),
+                  builder: (context) => FloatingActionButton(onPressed: () { final int currentIndex = DefaultTabController.of(context).index; _showFormSheet(context: context, categories: categories, initialCategory: categories[currentIndex], currentTeamId: currentTeamId); }, backgroundColor: AppColors.primary, child: const Icon(Icons.add, color: Colors.white)),
                 ),
               ),
             );
@@ -170,7 +171,7 @@ class _EquipmentPageState extends State<EquipmentPage> {
           if (category == 'レスキュー')
             Text('${data['rescueType'] ?? '種別未設定'} / 定員: ${data['capacity']?.toString() ?? '未設定'}人', style: const TextStyle(color: Colors.teal, fontWeight: FontWeight.bold, fontSize: 11)),
           if (category == 'レスキュー' && lastRefueled.isNotEmpty)
-            Text('最終給油: $lastRefueled', style: const TextStyle(color: Colors.indigo, fontWeight: FontWeight.bold, fontSize: 11)),
+            Text('最終給油: $lastRefueled', style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 11)),
           
           Text(isQuantityMode ? '最終更新: $user' : '報告: $user', style: const TextStyle(fontSize: 10, color: Colors.grey)),
         ]),
@@ -322,7 +323,7 @@ class _EquipmentPageState extends State<EquipmentPage> {
                     width: double.infinity,
                     height: 50,
                     child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.indigo, foregroundColor: Colors.white),
+                      style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
                       onPressed: () async {
                         final user = FirebaseAuth.instance.currentUser;
                         String finalName = nameController.text;
@@ -424,7 +425,7 @@ class _EquipmentPageState extends State<EquipmentPage> {
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.add_circle, color: Colors.indigo, size: 32),
+                    icon: const Icon(Icons.add_circle, color: AppColors.primary, size: 32),
                     onPressed: () async {
                       if (textController.text.isNotEmpty) {
                         await FirebaseFirestore.instance.collection('categories').add({

@@ -1,3 +1,4 @@
+import 'app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -160,8 +161,8 @@ class _ApprovedUsersTab extends StatelessWidget {
 
             return ListTile(
               leading: CircleAvatar(
-                backgroundColor: isTargetAdmin ? Colors.redAccent : Colors.indigo.shade100,
-                child: Icon(Icons.person, color: isTargetAdmin ? Colors.white : Colors.indigo),
+                backgroundColor: isTargetAdmin ? Colors.redAccent : AppColors.primary.shade100,
+                child: Icon(Icons.person, color: isTargetAdmin ? Colors.white : AppColors.primary),
               ),
               title: Text('$name ($grade)'),
               subtitle: Text(teamRole.isNotEmpty ? teamRole : '役職なし'),

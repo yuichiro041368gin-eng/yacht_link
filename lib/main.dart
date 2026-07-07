@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'firebase_options.dart';
 import 'member_list_page.dart'; // 追加
+import 'app_theme.dart';
 
 // 各ページの読み込み
 import 'auth_page.dart';
@@ -30,10 +31,7 @@ class YachtLinkApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'YachtLink',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
-        useMaterial3: true,
-      ),
+      theme: AppTheme.light,
       // ★ここから門番システム
       home: StreamBuilder<User?>(
         stream: FirebaseAuth.instance.authStateChanges(), // 1. ログインしてる？
@@ -115,12 +113,30 @@ class _MainScreenState extends State<MainScreen> {
         onDestinationSelected: _onItemTapped,
         selectedIndex: _selectedIndex,
         destinations: const <Widget>[
-          NavigationDestination(icon: Icon(Icons.analytics_outlined), label: 'コーチング'),
-          NavigationDestination(icon: Icon(Icons.calendar_month_outlined), label: '日誌'),
-          NavigationDestination(icon: Icon(Icons.video_camera_front), label: '分析'),
-          NavigationDestination(icon: Icon(Icons.sailing_outlined), label: '機材'),
-          NavigationDestination(icon: Icon(Icons.groups), label: '名簿'),
-          NavigationDestination(icon: Icon(Icons.person_outline), label: '設定'),
+          NavigationDestination(
+              icon: Icon(Icons.analytics_outlined),
+              selectedIcon: Icon(Icons.analytics),
+              label: 'コーチング'),
+          NavigationDestination(
+              icon: Icon(Icons.calendar_month_outlined),
+              selectedIcon: Icon(Icons.calendar_month),
+              label: '日誌'),
+          NavigationDestination(
+              icon: Icon(Icons.video_camera_front_outlined),
+              selectedIcon: Icon(Icons.video_camera_front),
+              label: '分析'),
+          NavigationDestination(
+              icon: Icon(Icons.sailing_outlined),
+              selectedIcon: Icon(Icons.sailing),
+              label: '機材'),
+          NavigationDestination(
+              icon: Icon(Icons.groups_outlined),
+              selectedIcon: Icon(Icons.groups),
+              label: '名簿'),
+          NavigationDestination(
+              icon: Icon(Icons.person_outline),
+              selectedIcon: Icon(Icons.person),
+              label: '設定'),
         ],
       ),
     );

@@ -1,3 +1,4 @@
+import 'app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -134,10 +135,10 @@ class _WeatherMapPageState extends State<WeatherMapPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: AppColors.scaffoldBg,
       appBar: AppBar(
         title: const Text('天気図', style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.indigo,
+        backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         centerTitle: true,
         actions: [
@@ -246,7 +247,7 @@ class _WeatherMapPageState extends State<WeatherMapPage> {
             style: const TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.bold,
-              color: Colors.indigo,
+              color: AppColors.primary,
             ),
           ),
         ),
@@ -287,7 +288,7 @@ class _WeatherMapPageState extends State<WeatherMapPage> {
         children: [
           IconButton(
             tooltip: '前の時刻',
-            icon: const Icon(Icons.chevron_left, color: Colors.indigo),
+            icon: const Icon(Icons.chevron_left, color: AppColors.primary),
             onPressed: _actualIndex > 0
                 ? () => setState(() => _actualIndex--)
                 : null,
@@ -301,13 +302,13 @@ class _WeatherMapPageState extends State<WeatherMapPage> {
               label: DateFormat(
                 'd日 HH時',
               ).format(_actuals[_actualIndex].validJst),
-              activeColor: Colors.indigo,
+              activeColor: AppColors.primary,
               onChanged: (v) => setState(() => _actualIndex = v.round()),
             ),
           ),
           IconButton(
             tooltip: '次の時刻',
-            icon: const Icon(Icons.chevron_right, color: Colors.indigo),
+            icon: const Icon(Icons.chevron_right, color: AppColors.primary),
             onPressed: _actualIndex < _actuals.length - 1
                 ? () => setState(() => _actualIndex++)
                 : null,
@@ -321,7 +322,7 @@ class _WeatherMapPageState extends State<WeatherMapPage> {
   Widget _buildFooterNote() {
     return Container(
       width: double.infinity,
-      color: Colors.indigo.shade50,
+      color: AppColors.primary.shade50,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -333,7 +334,7 @@ class _WeatherMapPageState extends State<WeatherMapPage> {
                 child: Text(
                   '⚠ 出艇前に等圧線の間隔（狭い＝強風）と前線・低気圧の動きを確認し、'
                   '練習時間帯の風の変化を予測すること',
-                  style: TextStyle(fontSize: 11, color: Colors.indigo),
+                  style: TextStyle(fontSize: 11, color: AppColors.primary),
                 ),
               ),
               TextButton.icon(
@@ -387,7 +388,7 @@ class _WeatherMapPageState extends State<WeatherMapPage> {
                   children: [
                     _guideSection(
                       Icons.multiline_chart,
-                      Colors.indigo,
+                      AppColors.primary,
                       '等圧線と風の強さ',
                       const [
                         '等圧線は気圧の等しい地点を結んだ線。4hPaごとに引かれ、20hPaごとに太線になる',

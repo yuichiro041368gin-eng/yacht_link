@@ -1,3 +1,4 @@
+import 'app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -134,7 +135,7 @@ class _TeamSelectPageState extends State<TeamSelectPage> {
         onPressed: _showCreateTeamDialog,
         icon: const Icon(Icons.add),
         label: const Text('新規チーム作成'),
-        backgroundColor: Colors.indigo,
+        backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
       ),
       body: Padding(
@@ -191,12 +192,12 @@ class _TeamSelectPageState extends State<TeamSelectPage> {
                       return Card(
                         margin: const EdgeInsets.only(bottom: 10),
                         child: ListTile(
-                          leading: const Icon(Icons.sailing, size: 40, color: Colors.indigo),
+                          leading: const Icon(Icons.sailing, size: 40, color: AppColors.primary),
                           title: Text(data['name'], style: const TextStyle(fontWeight: FontWeight.bold)),
                           subtitle: Text(data['univ'] ?? ''),
                           trailing: ElevatedButton(
                             onPressed: () => _applyToTeam(doc.id, data['name']),
-                            style: ElevatedButton.styleFrom(backgroundColor: Colors.indigo),
+                            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
                             child: const Text('申請する', style: TextStyle(color: Colors.white)),
                           ),
                         ),

@@ -1,3 +1,4 @@
+import 'app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -199,12 +200,12 @@ class _SettingsPageState extends State<SettingsPage> {
     if (_isLoading) return const Center(child: CircularProgressIndicator());
 
     return Scaffold(
-      appBar: AppBar(title: const Text('マイページ設定'), backgroundColor: Colors.indigo, foregroundColor: Colors.white),
+      appBar: AppBar(title: const Text('マイページ設定'), backgroundColor: AppColors.primary, foregroundColor: Colors.white),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
         child: Column(
           children: [
-            const CircleAvatar(radius: 40, backgroundColor: Colors.indigo, child: Icon(Icons.person, size: 50, color: Colors.white)),
+            const CircleAvatar(radius: 40, backgroundColor: AppColors.primary, child: Icon(Icons.person, size: 50, color: Colors.white)),
             const SizedBox(height: 20),
 
             if (_isAdmin) ...[
@@ -278,16 +279,16 @@ class _SettingsPageState extends State<SettingsPage> {
               title: const Text('小型船舶操縦免許を保有'),
               subtitle: const Text('レスキュー艇の運転者チェックに使用', style: TextStyle(fontSize: 12)),
               value: _hasBoatLicense,
-              activeThumbColor: Colors.indigo,
+              activeThumbColor: AppColors.primary,
               contentPadding: EdgeInsets.zero,
               onChanged: (val) => setState(() => _hasBoatLicense = val),
             ),
             const SizedBox(height: 40),
 
-            SizedBox(width: double.infinity, height: 50, child: ElevatedButton.icon(onPressed: _saveProfile, icon: const Icon(Icons.cloud_upload), label: const Text('保存して公開'), style: ElevatedButton.styleFrom(backgroundColor: Colors.indigo, foregroundColor: Colors.white))),
+            SizedBox(width: double.infinity, height: 50, child: ElevatedButton.icon(onPressed: _saveProfile, icon: const Icon(Icons.cloud_upload), label: const Text('保存して公開'), style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white))),
             const SizedBox(height: 40),
             
-            OutlinedButton.icon(onPressed: () => FirebaseAuth.instance.signOut(), icon: const Icon(Icons.logout), label: const Text('ログアウト'), style: OutlinedButton.styleFrom(foregroundColor: Colors.indigo)),
+            OutlinedButton.icon(onPressed: () => FirebaseAuth.instance.signOut(), icon: const Icon(Icons.logout), label: const Text('ログアウト'), style: OutlinedButton.styleFrom(foregroundColor: AppColors.primary)),
             
             const SizedBox(height: 50),
             const Divider(),

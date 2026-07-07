@@ -1,3 +1,4 @@
+import 'app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -14,7 +15,7 @@ class MemberListPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('チームメンバー名簿'),
-        backgroundColor: Colors.indigo,
+        backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
       ),
       body: StreamBuilder<DocumentSnapshot>(
@@ -73,10 +74,10 @@ class MemberListPage extends StatelessWidget {
                         );
                       },
                       leading: CircleAvatar(
-                        backgroundColor: role == 'admin' ? Colors.redAccent : Colors.indigo.shade100,
+                        backgroundColor: role == 'admin' ? Colors.redAccent : AppColors.primary.shade100,
                         backgroundImage: photoUrl != null ? NetworkImage(photoUrl) : null,
                         child: photoUrl == null
-                            ? Icon(Icons.person, color: role == 'admin' ? Colors.white : Colors.indigo)
+                            ? Icon(Icons.person, color: role == 'admin' ? Colors.white : AppColors.primary)
                             : null,
                       ),
                       title: Wrap(
@@ -228,7 +229,7 @@ class _MemberDetailPageState extends State<MemberDetailPage> {
                       Navigator.pop(context);
                     }
                   },
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.indigo, foregroundColor: Colors.white),
+                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
                   child: const Text('保存'),
                 ),
               ],
@@ -350,7 +351,7 @@ class _MemberDetailPageState extends State<MemberDetailPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text('$name さんの詳細'),
-        backgroundColor: Colors.indigo,
+        backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         actions: [
           if (_isViewerAdmin)
@@ -403,7 +404,7 @@ class _MemberDetailPageState extends State<MemberDetailPage> {
               children: [
                 if (_userData['sailingCert'] != null && _userData['sailingCert'] != '未設定')
                   Chip(
-                    avatar: const Icon(Icons.sailing, size: 16, color: Colors.indigo),
+                    avatar: const Icon(Icons.sailing, size: 16, color: AppColors.primary),
                     label: Text('帆走資格: ${_userData['sailingCert']}', style: const TextStyle(fontSize: 12)),
                     visualDensity: VisualDensity.compact,
                   ),
@@ -433,7 +434,7 @@ class _MemberDetailPageState extends State<MemberDetailPage> {
               padding: EdgeInsets.all(16.0),
               child: Align(
                 alignment: Alignment.centerLeft,
-                child: Text('📊 直近60日のスキルバランス', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.indigo)),
+                child: Text('📊 直近60日のスキルバランス', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primary)),
               ),
             ),
 
@@ -470,7 +471,7 @@ class _MemberDetailPageState extends State<MemberDetailPage> {
                       ],
                       radarBackgroundColor: Colors.transparent,
                       borderData: FlBorderData(show: false),
-                      radarBorderData: const BorderSide(color: Colors.indigo, width: 1.5),
+                      radarBorderData: const BorderSide(color: AppColors.primary, width: 1.5),
                       titlePositionPercentageOffset: 0.1,
                       titleTextStyle: const TextStyle(color: Colors.black87, fontSize: 12, fontWeight: FontWeight.bold),
                       getTitle: (index, angle) {
@@ -605,7 +606,7 @@ class _MemberEditPageState extends State<MemberEditPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text('${widget.userData['name'] ?? 'メンバー'} さんを編集'),
-        backgroundColor: Colors.indigo,
+        backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
       ),
       body: SingleChildScrollView(
@@ -697,7 +698,7 @@ class _MemberEditPageState extends State<MemberEditPage> {
               title: const Text('小型船舶操縦免許を保有'),
               subtitle: const Text('レスキュー艇の運転者チェックに使用', style: TextStyle(fontSize: 12)),
               value: _hasBoatLicense,
-              activeThumbColor: Colors.indigo,
+              activeThumbColor: AppColors.primary,
               contentPadding: EdgeInsets.zero,
               onChanged: (val) => setState(() => _hasBoatLicense = val),
             ),
@@ -714,7 +715,7 @@ class _MemberEditPageState extends State<MemberEditPage> {
                         child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                     : const Icon(Icons.save),
                 label: Text(_saving ? '保存中...' : '保存する'),
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.indigo, foregroundColor: Colors.white),
+                style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
               ),
             ),
             const SizedBox(height: 40),
