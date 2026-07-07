@@ -400,19 +400,36 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  // 引っ張って更新: チームID未取得ならそこから、取得済みならチャートを再取得
+  Future<void> _handleRefresh() async {
+    if (_myTeamId == null) {
+      await _fetchMyTeamId();
+      return;
+    }
+    final future = _fetchChartData();
+    setState(() => _chartDataFuture = future);
+    await future;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.scaffoldBg,
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            _buildHeroHeader(),
-            _buildQuickAccessSection(),
-            _buildChartSection(),
-            const SizedBox(height: 20),
-            _buildAISection(),
-          ],
+      body: RefreshIndicator(
+        onRefresh: _handleRefresh,
+        color: AppColors.primary,
+        edgeOffset: 100,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Column(
+            children: [
+              _buildHeroHeader(),
+              _buildQuickAccessSection(),
+              _buildChartSection(),
+              const SizedBox(height: 20),
+              _buildAISection(),
+            ],
+          ),
         ),
       ),
       floatingActionButton: (_hasAnalyzed && !_isLoading)
@@ -532,8 +549,43 @@ class _HomePageState extends State<HomePage> {
       future: _chartDataFuture,
       builder: (context, snapshot) {
         // _chartDataFuture == null はチーム情報の読み込み待ち
+        // スピナーではなく、チャートカードの骨組み（スケルトン）を明滅表示する
         if (_chartDataFuture == null || snapshot.connectionState == ConnectionState.waiting) {
-          return const SizedBox(height: 300, child: Center(child: CircularProgressIndicator()));
+          return Container(
+            margin: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: AppColors.hairline),
+            ),
+            child: Column(
+              children: [
+                const Row(
+                  children: [
+                    Skeleton(width: 38, height: 38, borderRadius: BorderRadius.all(Radius.circular(12))),
+                    SizedBox(width: 10),
+                    Skeleton(width: 160, height: 18),
+                  ],
+                ),
+                const SizedBox(height: 18),
+                const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Skeleton(width: 56, height: 24, borderRadius: BorderRadius.all(Radius.circular(20))),
+                    SizedBox(width: 8),
+                    Skeleton(width: 56, height: 24, borderRadius: BorderRadius.all(Radius.circular(20))),
+                    SizedBox(width: 8),
+                    Skeleton(width: 56, height: 24, borderRadius: BorderRadius.all(Radius.circular(20))),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                const Center(child: Skeleton.circle(size: 240)),
+                const SizedBox(height: 16),
+                const Skeleton(width: 140, height: 11),
+              ],
+            ),
+          );
         }
         if (!snapshot.hasData || snapshot.data!.isEmpty) {
           return Container(

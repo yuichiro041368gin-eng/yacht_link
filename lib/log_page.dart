@@ -13,6 +13,10 @@ class LogPage extends StatefulWidget {
   State<LogPage> createState() => _LogPageState();
 }
 
+/// 自動保存の状態。pending はオフラインで書き込みがキューイングされている状態
+/// （通信回復後にFirestoreが自動送信するのでデータは失われない）。
+enum _SaveStatus { idle, saving, saved, pending, error }
+
 class _LogPageState extends State<LogPage> {
   DateTime _selectedDate = DateTime.now();
   String get _formattedDate => DateFormat('yyyy-MM-dd').format(_selectedDate);
@@ -27,6 +31,10 @@ class _LogPageState extends State<LogPage> {
   // ★追加: 画面の即時反映用（楽観的更新データ）
   // データベースの反応を待たずに、ここに入っている値を優先して表示します
   final Map<String, int> _optimisticScores = {};
+
+  // 自動保存の状態表示（AppBarのインジケーター用）
+  _SaveStatus _saveStatus = _SaveStatus.idle;
+  DateTime? _lastSavedAt;
 
   String get _documentId {
     final uid = FirebaseAuth.instance.currentUser?.uid ?? "guest";
@@ -448,6 +456,8 @@ class _LogPageState extends State<LogPage> {
             ],
           ),
           actions: [
+            Center(child: _buildSaveIndicator()),
+            const SizedBox(width: 4),
             if (_isAdmin)
               IconButton(
                 icon: const Icon(Icons.edit_note),
@@ -464,7 +474,7 @@ class _LogPageState extends State<LogPage> {
             isScrollable: true,
             labelColor: Colors.white,
             unselectedLabelColor: Colors.white70,
-            indicatorColor: Colors.amber,
+            indicatorColor: AppColors.aqua,
             indicatorWeight: 3,
             tabs: [
               Tab(icon: Icon(Icons.air), text: '風'),
@@ -1048,13 +1058,91 @@ class _LogPageState extends State<LogPage> {
     );
   }
 
+  // AppBar右上の自動保存インジケーター
+  Widget _buildSaveIndicator() {
+    switch (_saveStatus) {
+      case _SaveStatus.idle:
+        return const SizedBox.shrink();
+      case _SaveStatus.saving:
+        return const SizedBox(
+          width: 14,
+          height: 14,
+          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white70),
+        );
+      case _SaveStatus.saved:
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.cloud_done_outlined, size: 18, color: Colors.white),
+            const SizedBox(width: 4),
+            Text(
+              _lastSavedAt != null ? DateFormat('HH:mm').format(_lastSavedAt!) : '',
+              style: const TextStyle(fontSize: 11, color: Colors.white70),
+            ),
+          ],
+        );
+      case _SaveStatus.pending:
+        return const Tooltip(
+          message: 'オフライン: 通信回復後に自動送信されます',
+          child: Icon(Icons.cloud_queue, size: 18, color: Colors.amberAccent),
+        );
+      case _SaveStatus.error:
+        return const Tooltip(
+          message: '保存に失敗しました',
+          child: Icon(Icons.cloud_off, size: 18, color: Color(0xFFFF8787)),
+        );
+    }
+  }
+
+  // チームID取得前の入力を無言で捨てないため、必要なら取得を待ってから保存する
+  Future<bool> _ensureTeamId() async {
+    if (_myTeamId != null) return true;
+    await _fetchUserInfo();
+    return _myTeamId != null;
+  }
+
+  // 書き込みを実行しつつ、AppBarの保存インジケーターを更新する。
+  // オフライン時はFirestoreが書き込みをキューイングする（=データは消えない）ので、
+  // タイムアウトは「保存待ち」として区別して表示する。
+  Future<void> _runSave(Future<void> Function() write) async {
+    final bool wasAlreadyPending = _saveStatus == _SaveStatus.pending;
+    if (mounted) setState(() => _saveStatus = _SaveStatus.saving);
+    try {
+      await write().timeout(const Duration(seconds: 8));
+      if (mounted) {
+        setState(() {
+          _saveStatus = _SaveStatus.saved;
+          _lastSavedAt = DateTime.now();
+        });
+      }
+    } on TimeoutException {
+      if (mounted) {
+        setState(() => _saveStatus = _SaveStatus.pending);
+        if (!wasAlreadyPending) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('オフラインのため端末に保存しました。通信回復後に自動送信されます。'),
+          ));
+        }
+      }
+    } catch (e) {
+      debugPrint('自動保存エラー: $e');
+      if (mounted) {
+        setState(() => _saveStatus = _SaveStatus.error);
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('自動保存に失敗しました。通信環境を確認してください。'),
+          backgroundColor: Colors.redAccent,
+        ));
+      }
+    }
+  }
+
   Future<void> _saveScore(String item, int value) async {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null || _myTeamId == null) return;
+    if (user == null || !await _ensureTeamId()) return;
 
     final docRef = FirebaseFirestore.instance.collection('practice_reports').doc(_documentId);
-    
-    await docRef.set({
+
+    await _runSave(() => docRef.set({
       'date': _formattedDate,
       'timeSlot': _timeSlot,
       'userId': user.uid,
@@ -1062,33 +1150,33 @@ class _LogPageState extends State<LogPage> {
       'teamId': _myTeamId,
       'scores': {item: value},
       'lastUpdated': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
+    }, SetOptions(merge: true)));
   }
 
   Future<void> _saveComment(String category, String text) async {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null || _myTeamId == null) return;
+    if (user == null || !await _ensureTeamId()) return;
 
-    await FirebaseFirestore.instance.collection('practice_reports').doc(_documentId).set({
+    await _runSave(() => FirebaseFirestore.instance.collection('practice_reports').doc(_documentId).set({
       'userName': _myUserName,
       'timeSlot': _timeSlot,
       'date': _formattedDate,
       'teamId': _myTeamId,
       'comment_$category': text,
-    }, SetOptions(merge: true));
+    }, SetOptions(merge: true)));
   }
 
   // ★修正箇所1: シングルクォーテーションを外し、変数keyとして保存されるようにしました
   Future<void> _saveCondition(String key, dynamic value) async {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null || _myTeamId == null) return;
-    
-    await FirebaseFirestore.instance.collection('practice_reports').doc(_documentId).set({
+    if (user == null || !await _ensureTeamId()) return;
+
+    await _runSave(() => FirebaseFirestore.instance.collection('practice_reports').doc(_documentId).set({
       'timeSlot': _timeSlot,
       'date': _formattedDate,
       'teamId': _myTeamId,
       key: value, // ← ここを修正しています
-    }, SetOptions(merge: true));
+    }, SetOptions(merge: true)));
   }
 
   // ★修正箇所2: チームIDを含めて検索し、権限エラーとインデックスエラーを回避しました

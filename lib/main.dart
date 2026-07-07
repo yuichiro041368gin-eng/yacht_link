@@ -108,7 +108,9 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _screens[_selectedIndex],
+      // IndexedStack で全タブの状態（スクロール位置・入力途中の内容・
+      // 読み込み済みデータ）を保持し、切替のたびの再構築と再クエリを防ぐ
+      body: IndexedStack(index: _selectedIndex, children: _screens),
       bottomNavigationBar: NavigationBar(
         onDestinationSelected: _onItemTapped,
         selectedIndex: _selectedIndex,

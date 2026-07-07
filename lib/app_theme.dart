@@ -176,6 +176,60 @@ class AppTheme {
   }
 }
 
+/// ローディング中に本物のレイアウトの「骨組み」を見せるスケルトン。
+/// ゆっくり明滅して読み込み中であることを伝える。
+class Skeleton extends StatefulWidget {
+  final double? width;
+  final double height;
+  final BorderRadius borderRadius;
+
+  const Skeleton({
+    super.key,
+    this.width,
+    required this.height,
+    this.borderRadius = const BorderRadius.all(Radius.circular(8)),
+  });
+
+  const Skeleton.circle({super.key, required double size})
+      : width = size,
+        height = size,
+        borderRadius = const BorderRadius.all(Radius.circular(999));
+
+  @override
+  State<Skeleton> createState() => _SkeletonState();
+}
+
+class _SkeletonState extends State<Skeleton>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1100),
+  )..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: Tween<double>(begin: 0.35, end: 0.85).animate(
+        CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+      ),
+      child: Container(
+        width: widget.width,
+        height: widget.height,
+        decoration: BoxDecoration(
+          color: AppColors.primary.shade100,
+          borderRadius: widget.borderRadius,
+        ),
+      ),
+    );
+  }
+}
+
 /// ホーム画面などで使う、グラデーション背景のバナーカード。
 class GradientBanner extends StatelessWidget {
   final String title;
